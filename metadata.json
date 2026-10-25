@@ -1,0 +1,6 @@
+{
+  "name": "Club Of Competition",
+  "description": "High-stakes 7:00 PM competitive daily exam platform with 40 questions in 320 seconds, deterministic ranking, student progress analytics, and admin dashboard.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
