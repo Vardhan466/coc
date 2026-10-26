@@ -1,15 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Attempt, LanguageCode } from '../types';
 import { getTranslation } from '../utils/i18n';
 import {
   Star,
-  Sparkles,
   CheckCircle2,
-  Clock,
   ArrowRight,
   Loader2,
   Trophy,
-  Users,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -58,60 +55,58 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
       // Ignore
     }
 
-    // High-fidelity progress steps
-    setTimeout(() => setComputeStep(1), 600);
-    setTimeout(() => setComputeStep(2), 1200);
+    setTimeout(() => setComputeStep(1), 500);
+    setTimeout(() => setComputeStep(2), 1000);
     setTimeout(() => {
       onSubmitAndProceed({
         rating,
         tags: selectedChips,
         note,
       });
-    }, 1800);
+    }, 1500);
   };
 
   if (isComputingRanks) {
     return (
-      <div className="fixed inset-0 bg-slate-950/90 z-50 flex items-center justify-center p-4 backdrop-blur-md">
-        <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-8 text-center text-white shadow-2xl space-y-6">
-          <div className="relative w-20 h-20 mx-auto flex items-center justify-center">
-            <div className="w-20 h-20 rounded-full border-4 border-amber-500/20 border-t-amber-500 animate-spin absolute" />
-            <Trophy className="w-8 h-8 text-amber-400 animate-pulse" />
+      <div className="fixed inset-0 bg-slate-900/40 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
+        <div className="bg-white border border-slate-200 rounded-2xl max-w-md w-full p-7 text-center text-slate-900 shadow-xl space-y-5">
+          <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mx-auto text-slate-800">
+            <Trophy className="w-8 h-8 text-amber-600" />
           </div>
 
           <div>
-            <h3 className="text-xl font-black tracking-tight text-white mb-1">
+            <h3 className="text-lg font-bold tracking-tight text-slate-900">
               {t.calculatingRankTitle}
             </h3>
-            <p className="text-xs text-slate-400 leading-relaxed">
+            <p className="text-xs text-slate-600 mt-1 leading-relaxed">
               {t.calculatingRankDesc}
             </p>
           </div>
 
           {/* Step progression */}
-          <div className="space-y-2 text-xs text-left max-w-xs mx-auto">
+          <div className="space-y-2 text-xs text-left max-w-xs mx-auto border-t border-slate-100 pt-4">
             <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span className="text-slate-300">Vault validation complete (40 items)</span>
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span className="text-slate-700">Vault scoring verified (40 items)</span>
             </div>
             <div className="flex items-center gap-2">
               {computeStep >= 1 ? (
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
               ) : (
-                <Loader2 className="w-4 h-4 text-amber-400 animate-spin shrink-0" />
+                <Loader2 className="w-4 h-4 text-slate-400 animate-spin shrink-0" />
               )}
-              <span className={computeStep >= 1 ? 'text-slate-300' : 'text-amber-400 font-semibold'}>
+              <span className={computeStep >= 1 ? 'text-slate-700' : 'text-slate-500'}>
                 Applying tie-breakers (Score &gt; Accuracy &gt; Time)
               </span>
             </div>
             <div className="flex items-center gap-2">
               {computeStep >= 2 ? (
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
               ) : (
-                <div className="w-4 h-4 rounded-full border border-slate-700 shrink-0" />
+                <div className="w-4 h-4 rounded-full border border-slate-300 shrink-0" />
               )}
-              <span className={computeStep >= 2 ? 'text-slate-300' : 'text-slate-500'}>
-                Finalizing State & All-India Rank
+              <span className={computeStep >= 2 ? 'text-slate-700' : 'text-slate-400'}>
+                Finalizing State & All-India Rankcard
               </span>
             </div>
           </div>
@@ -121,25 +116,23 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 bg-slate-950/85 z-50 flex items-center justify-center p-4 backdrop-blur-sm overflow-y-auto">
-      <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 sm:p-8 text-white shadow-2xl relative overflow-hidden my-auto">
-        <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-amber-500 via-emerald-500 to-blue-500" />
-
-        <div className="text-center mb-6">
-          <div className="w-14 h-14 bg-amber-500/10 border border-amber-500/30 text-amber-400 rounded-2xl mx-auto flex items-center justify-center mb-3">
-            <CheckCircle2 className="w-7 h-7" />
+    <div className="fixed inset-0 bg-slate-900/40 z-50 flex items-center justify-center p-4 backdrop-blur-xs overflow-y-auto">
+      <div className="bg-white border border-slate-200 rounded-2xl max-w-lg w-full p-6 sm:p-7 text-slate-900 shadow-xl relative my-auto">
+        <div className="text-center mb-5">
+          <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl mx-auto flex items-center justify-center mb-2.5 border border-emerald-200">
+            <CheckCircle2 className="w-6 h-6" />
           </div>
-          <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white">
+          <h2 className="text-xl font-bold tracking-tight text-slate-900">
             {t.feedbackTitle}
           </h2>
-          <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+          <p className="text-xs text-slate-600 mt-1 max-w-sm mx-auto">
             {t.feedbackSubtitle}
           </p>
         </div>
 
         {/* 5-Star Rating */}
-        <div className="bg-slate-800/80 border border-slate-700/60 rounded-2xl p-4 text-center mb-5">
-          <div className="text-xs font-bold text-slate-300 mb-2">
+        <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-center mb-4">
+          <div className="text-xs font-semibold text-slate-700 mb-2">
             {t.rateDifficulty}
           </div>
           <div className="flex items-center justify-center gap-2">
@@ -148,13 +141,13 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
                 key={star}
                 type="button"
                 onClick={() => setRating(star)}
-                className="p-1 text-2xl transition-transform hover:scale-125 active:scale-95"
+                className="p-1 transition-transform hover:scale-110 active:scale-95"
               >
                 <Star
-                  className={`w-7 h-7 ${
+                  className={`w-6 h-6 ${
                     star <= rating
-                      ? 'text-amber-400 fill-amber-400'
-                      : 'text-slate-600'
+                      ? 'text-amber-500 fill-amber-500'
+                      : 'text-slate-300'
                   }`}
                 />
               </button>
@@ -163,8 +156,8 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
         </div>
 
         {/* Quick Tag Chips */}
-        <div className="space-y-2 mb-5">
-          <div className="text-xs font-semibold text-slate-400">Quick Impressions</div>
+        <div className="space-y-2 mb-4">
+          <div className="text-xs font-semibold text-slate-700">Quick Impressions</div>
           <div className="flex flex-wrap gap-2">
             {chips.map((chip) => {
               const isSelected = selectedChips.includes(chip);
@@ -173,10 +166,10 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
                   key={chip}
                   type="button"
                   onClick={() => toggleChip(chip)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                     isSelected
-                      ? 'bg-amber-500 text-slate-950 font-bold shadow-sm'
-                      : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700'
+                      ? 'bg-slate-900 text-white font-semibold shadow-xs'
+                      : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
                   }`}
                 >
                   {chip}
@@ -186,12 +179,26 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
           </div>
         </div>
 
-        {/* Action Button */}
+        {/* Optional Note */}
+        <div className="mb-5">
+          <label className="block text-xs font-semibold text-slate-700 mb-1">
+            {t.feedbackNotePlaceholder}
+          </label>
+          <textarea
+            rows={2}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Any specific questions that felt tricky or ambiguous?"
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs focus:outline-none focus:ring-1 focus:ring-slate-900"
+          />
+        </div>
+
         <button
+          type="button"
           onClick={handleSubmit}
-          className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black py-3.5 rounded-xl transition-all shadow-lg shadow-amber-500/20 active:scale-98 flex items-center justify-center gap-2 text-sm sm:text-base"
+          className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 rounded-xl text-xs transition-colors shadow-xs flex items-center justify-center gap-2"
         >
-          <span>{t.submitFeedbackAndResults}</span>
+          <span>{t.submitFeedbackBtn}</span>
           <ArrowRight className="w-4 h-4" />
         </button>
       </div>

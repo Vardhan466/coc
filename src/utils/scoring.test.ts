@@ -137,7 +137,7 @@ test('calculateDiscriminationIndex and checkQuestionDefect correctly detect defe
   assert.match(defectCheck.reason || '', /Negative discrimination/);
 });
 
-test('validateTestPaper enforces strictly 40 questions and required fields', () => {
+test('validateTestPaper enforces strictly 30 questions and required fields', () => {
   // Test paper with only 2 questions should fail
   const incompleteResult = validateTestPaper({
     title: 'Test Exam',
@@ -156,5 +156,5 @@ test('validateTestPaper enforces strictly 40 questions and required fields', () 
     ] as Question[],
   });
   assert.equal(incompleteResult.valid, false);
-  assert.match(incompleteResult.errors[0], /exactly 40 questions/);
+  assert.match(incompleteResult.errors[0], /exactly 30 questions/);
 });

@@ -69,9 +69,9 @@ export interface TestPaper {
   windowStart: string; // "19:00" IST
   windowEnd: string; // "19:15" IST
   answerKeyReleaseTime: string; // "20:15" IST
-  totalQuestions: number; // 40
-  totalDurationSeconds: number; // 320
-  questionDurationSeconds: number; // 8
+  totalQuestions: number; // 30
+  totalDurationSeconds: number; // 300
+  questionDurationSeconds: number; // 10
   status: TestStatus;
   questions: Question[];
   lockedForEditing: boolean;
@@ -81,32 +81,39 @@ export interface TestPaper {
 export interface AttemptAnswer {
   questionId: string;
   questionIndex: number;
-  selectedOptionIndex: number | null; // 0..3 or null if skipped
+  selectedOptionIndex?: number | null; // 0..3 or null if skipped
+  selectedOption?: number | null;
   timeSpentSeconds: number;
-  submittedAt: string;
+  submittedAt?: string;
+  timestamp?: string;
   isCorrect?: boolean;
 }
 
 export interface Attempt {
-  id: string;
+  id?: string;
+  attemptId?: string;
   testId: string;
   studentId: string;
   studentName: string;
   studentState: string;
-  startedAt: string;
+  startedAt?: string;
   completedAt?: string;
+  submittedAt?: string;
   answers: AttemptAnswer[];
   score: number;
   correctCount: number;
   incorrectCount: number;
   unattemptedCount: number;
-  timeTakenSeconds: number;
+  timeTakenSeconds?: number;
+  totalTimeSeconds?: number;
   rank?: number;
   percentile?: number;
-  integrityFlags: {
+  integrityFlags?: {
     tabSwitches: number;
     focusLosses: number;
   };
+  isDisqualified?: boolean;
+  disqualificationReason?: string;
 }
 
 export interface QuestionAnalytic {

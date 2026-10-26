@@ -11,12 +11,8 @@ import {
   ShieldAlert,
   Wifi,
   WifiOff,
-  Flame,
-  Award,
   ArrowRight,
-  HelpCircle,
   XCircle,
-  Timer,
 } from 'lucide-react';
 
 interface ExamRunnerProps {
@@ -42,8 +38,8 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({
 }) => {
   const t = getTranslation(language);
 
-  const QUESTION_DURATION_SECONDS = 12;
-  const TOTAL_DURATION_SECONDS = 320; // 5 min 20 sec
+  const QUESTION_DURATION_SECONDS = test.questionDurationSeconds || 10;
+  const TOTAL_DURATION_SECONDS = test.totalDurationSeconds || 300; // 5 min (300 sec)
 
   const [currentQIndex, setCurrentQIndex] = useState(0);
   const [answers, setAnswers] = useState<AttemptAnswer[]>([]);
@@ -59,6 +55,7 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({
   const [examFinished, setExamFinished] = useState(false);
   const [finalAttempt, setFinalAttempt] = useState<Attempt | null>(null);
 
+  const examStartTimeRef = useRef<string>(new Date().toISOString());
   const questionStartTimeRef = useRef<number>(Date.now());
   const timerIntervalRef = useRef<any>(null);
   const isFinishedRef = useRef(false);
@@ -100,113 +97,108 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({
         return;
       }
 
-      const now = Date.now();
-      const elapsedMs = now - questionStartTimeRef.current;
-      const msLeft = Math.max(0, QUESTION_DURATION_SECONDS * 1000 - elapsedMs);
-      const secLeft = Math.ceil(msLeft / 1000);
+      const elapsedMs = Date.now() - questionStartTimeRef.current;
+      const remainingMs = Math.max(0, QUESTION_DURATION_SECONDS * 1000 - elapsedMs);
+      const remainingSec = Math.ceil(remainingMs / 1000);
 
-      setMillisecondTick(msLeft);
-      setQuestionSecondsLeft(secLeft);
+      setMillisecondTick(remainingMs);
+      setQuestionSecondsLeft(remainingSec);
 
       setTotalSecondsLeft((prev) => {
-        if (prev <= 0.1) {
+        if (prev <= 1) {
           clearInterval(timer);
           triggerCompletion();
           return 0;
         }
-        return Math.max(0, prev - 0.1);
+        return prev - 0.1;
       });
 
-      if (msLeft <= 0) {
+      if (remainingMs <= 0) {
+        clearInterval(timer);
         advanceQuestion();
       }
     }, 100);
 
     timerIntervalRef.current = timer;
 
-    return () => clearInterval(timer);
+    return () => {
+      clearInterval(timer);
+    };
   }, [currentQIndex, examFinished, isDisqualified]);
 
   const advanceQuestion = () => {
     if (isFinishedRef.current) return;
 
-    const timeSpent = Math.min(
-      QUESTION_DURATION_SECONDS,
-      Number(((Date.now() - questionStartTimeRef.current) / 1000).toFixed(1))
+    const timeSpentMs = Math.min(
+      QUESTION_DURATION_SECONDS * 1000,
+      Date.now() - questionStartTimeRef.current
     );
-
-    const isCorrect = selectedOption !== null && selectedOption === currentQuestion.correctIndex;
+    const timeSpentSec = Number((timeSpentMs / 1000).toFixed(1));
 
     const answerRecord: AttemptAnswer = {
       questionId: currentQuestion.id,
-      questionIndex: currentQIndex,
-      selectedOptionIndex: selectedOption,
-      timeSpentSeconds: timeSpent,
-      submittedAt: new Date().toISOString(),
-      isCorrect,
+      questionIndex: safeQIndex,
+      selectedOption: selectedOption,
+      timeSpentSeconds: timeSpentSec,
+      isCorrect: selectedOption !== null ? selectedOption === currentQuestion.correctIndex : false,
+      timestamp: new Date().toISOString(),
     };
 
-    const nextAnswers = [...answers, answerRecord];
-    setAnswers(nextAnswers);
+    setAnswers((prev) => {
+      const updated = [...prev, answerRecord];
 
-    // If we reached the end of the test (40 questions), finish smoothly!
-    if (currentQIndex + 1 >= test.questions.length) {
-      triggerCompletion(nextAnswers);
-    } else {
-      setCurrentQIndex((prev) => prev + 1);
-    }
+      if (safeQIndex >= test.questions.length - 1) {
+        triggerCompletion(updated);
+      } else {
+        setCurrentQIndex((prevIndex) => prevIndex + 1);
+      }
+      return updated;
+    });
   };
 
-  const handleSelectOption = (index: number) => {
-    if (isOptionLocked || examFinished || isFinishedRef.current || isDisqualified) return;
-    setSelectedOption(index);
+  const handleSelectOption = (optIndex: number) => {
+    if (isOptionLocked || examFinished || isFinishedRef.current) return;
+    setSelectedOption(optIndex);
     setIsOptionLocked(true);
   };
 
-  const triggerCompletion = (completedAnswers = answers) => {
+  const triggerCompletion = (latestAnswers?: AttemptAnswer[]) => {
     if (isFinishedRef.current) return;
     isFinishedRef.current = true;
-    clearInterval(timerIntervalRef.current);
     setExamFinished(true);
 
-    let correct = 0;
-    let incorrect = 0;
-    let unattempted = 0;
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+    }
 
-    completedAnswers.forEach((ans) => {
-      if (ans.selectedOptionIndex === null) {
-        unattempted++;
-      } else if (ans.isCorrect) {
-        correct++;
-      } else {
-        incorrect++;
-      }
-    });
+    const recordedAnswers = latestAnswers || answers;
+    const answeredCount = recordedAnswers.filter((a) => a.selectedOption !== null).length;
+    const correctCount = recordedAnswers.filter((a) => a.isCorrect).length;
+    const incorrectCount = recordedAnswers.filter(
+      (a) => a.selectedOption !== null && !a.isCorrect
+    ).length;
+    const unattemptedCount = test.totalQuestions - answeredCount;
 
-    const unreachedCount = Math.max(0, test.questions.length - completedAnswers.length);
-    unattempted += unreachedCount;
-
-    const finalScore = calculateScore(correct, incorrect);
-    const timeTaken = Math.min(TOTAL_DURATION_SECONDS, Math.round(TOTAL_DURATION_SECONDS - totalSecondsLeft));
+    const totalTimeSec = TOTAL_DURATION_SECONDS - Math.max(0, Math.floor(totalSecondsLeft));
+    const rawScore = calculateScore(correctCount, incorrectCount);
 
     const attempt: Attempt = {
       id: `att_${Date.now()}`,
+      attemptId: `att_${Date.now()}`,
       testId: test.id,
       studentId,
       studentName,
       studentState,
-      startedAt: examStartedAt,
-      completedAt: new Date().toISOString(),
-      answers: completedAnswers,
-      score: finalScore,
-      correctCount: correct,
-      incorrectCount: incorrect,
-      unattemptedCount: unattempted,
-      timeTakenSeconds: timeTaken || 310,
-      integrityFlags: {
-        tabSwitches: violationCount,
-        focusLosses: integrityLogs.length,
-      },
+      startedAt: examStartTimeRef.current,
+      submittedAt: new Date().toISOString(),
+      score: rawScore,
+      correctCount,
+      incorrectCount,
+      unattemptedCount,
+      timeTakenSeconds: Math.max(1, totalTimeSec),
+      totalTimeSeconds: Math.max(1, totalTimeSec),
+      answers: recordedAnswers,
+      isDisqualified: false,
     };
 
     setFinalAttempt(attempt);
@@ -215,27 +207,30 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({
   const finishExamAsDisqualified = (events: IntegrityEvent[]) => {
     if (isFinishedRef.current) return;
     isFinishedRef.current = true;
-    clearInterval(timerIntervalRef.current);
     setExamFinished(true);
+
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+    }
 
     const attempt: Attempt = {
       id: `att_disq_${Date.now()}`,
+      attemptId: `att_disq_${Date.now()}`,
       testId: test.id,
       studentId,
       studentName,
       studentState,
-      startedAt: examStartedAt,
-      completedAt: new Date().toISOString(),
-      answers,
-      score: -5.0,
+      startedAt: examStartTimeRef.current,
+      submittedAt: new Date().toISOString(),
+      score: -10,
       correctCount: 0,
-      incorrectCount: 0,
-      unattemptedCount: test.questions.length,
-      timeTakenSeconds: Math.round(TOTAL_DURATION_SECONDS - totalSecondsLeft) || 12,
-      integrityFlags: {
-        tabSwitches: events.filter((e) => e.type === 'tab_switch').length,
-        focusLosses: events.length,
-      },
+      incorrectCount: test.totalQuestions,
+      unattemptedCount: 0,
+      timeTakenSeconds: TOTAL_DURATION_SECONDS - Math.floor(totalSecondsLeft),
+      totalTimeSeconds: TOTAL_DURATION_SECONDS - Math.floor(totalSecondsLeft),
+      answers: [],
+      isDisqualified: true,
+      disqualificationReason: 'Repeated tab switching / application backgrounding detected.',
     };
 
     setFinalAttempt(attempt);
@@ -262,39 +257,40 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({
   // 2. If Disqualified due to repeated tab switching
   if (isDisqualified) {
     return (
-      <div className="min-h-screen bg-slate-950 text-white flex flex-col justify-center items-center px-4 py-8">
-        <div className="w-full max-w-md bg-slate-900 border-2 border-rose-600 rounded-3xl p-6 sm:p-8 text-center shadow-2xl space-y-5 animate-in zoom-in-95">
-          <div className="w-16 h-16 bg-rose-600/20 border-2 border-rose-500 text-rose-500 rounded-2xl mx-auto flex items-center justify-center">
-            <XCircle className="w-10 h-10" />
+      <div className="min-h-screen bg-[#F8FAFC] text-slate-900 flex flex-col justify-center items-center px-4 py-8">
+        <div className="w-full max-w-md bg-white border border-rose-200 rounded-2xl p-6 sm:p-8 text-center shadow-md space-y-5">
+          <div className="w-14 h-14 bg-rose-50 text-rose-600 rounded-xl mx-auto flex items-center justify-center border border-rose-200">
+            <XCircle className="w-8 h-8" />
           </div>
 
           <div>
-            <h2 className="text-xl sm:text-2xl font-black text-rose-400 tracking-tight">
+            <h2 className="text-xl font-bold text-rose-900 tracking-tight">
               {t.examTerminatedTitle}
             </h2>
-            <p className="text-xs text-slate-300 mt-2 leading-relaxed">
+            <p className="text-xs text-slate-600 mt-2 leading-relaxed">
               {t.examTerminatedDesc}
             </p>
           </div>
 
-          <div className="p-4 rounded-2xl bg-rose-950/40 border border-rose-800/60 text-xs text-rose-200 text-left space-y-1.5">
-            <div className="font-bold text-rose-300 flex items-center gap-1.5 mb-1">
-              <ShieldAlert className="w-4 h-4 text-rose-400" />
+          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 text-left space-y-1.5">
+            <div className="font-semibold text-rose-800 flex items-center gap-1.5 mb-1">
+              <ShieldAlert className="w-4 h-4 text-rose-600" />
               <span>Violations Logged on Server:</span>
             </div>
             {integrityLogs.map((log, i) => (
-              <div key={i} className="text-[11px] font-mono text-slate-300">
+              <div key={i} className="text-[11px] font-mono text-slate-600">
                 • {log.type}: Q{log.questionIndex + 1} ({new Date(log.timestamp).toLocaleTimeString()})
               </div>
             ))}
           </div>
 
           <button
+            type="button"
             onClick={() => {
               if (finalAttempt) onCompleteExam(finalAttempt);
               onExit();
             }}
-            className="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-3.5 rounded-xl text-xs transition-colors"
+            className="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-3 rounded-xl text-xs transition-colors shadow-xs"
           >
             {t.exitToResults}
           </button>
@@ -321,37 +317,32 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({
     return currentQuestion?.options?.[optIdx] ?? '';
   };
 
-  // 12-second circular timer math
-  const radius = 28;
-  const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset =
-    circumference - (millisecondTick / (QUESTION_DURATION_SECONDS * 1000)) * circumference;
   const isUrgent = questionSecondsLeft <= 4;
-
   const totalProgressPercent = ((TOTAL_DURATION_SECONDS - totalSecondsLeft) / TOTAL_DURATION_SECONDS) * 100;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between select-none relative animate-in fade-in duration-200">
+    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 flex flex-col justify-between select-none relative font-sans">
       {/* Gentle Warning Modal on 1st Violation */}
       {showWarningModal && (
-        <div className="fixed inset-0 bg-slate-950/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-slate-900 border-2 border-amber-500 rounded-3xl max-w-md w-full p-6 text-center text-white shadow-2xl space-y-4">
-            <div className="w-14 h-14 bg-amber-500/20 border border-amber-500/40 text-amber-400 rounded-2xl mx-auto flex items-center justify-center">
-              <AlertTriangle className="w-8 h-8" />
+        <div className="fixed inset-0 bg-slate-900/40 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
+          <div className="bg-white border border-amber-300 rounded-2xl max-w-md w-full p-6 text-center text-slate-900 shadow-xl space-y-4">
+            <div className="w-12 h-12 bg-amber-50 border border-amber-200 text-amber-600 rounded-xl mx-auto flex items-center justify-center">
+              <AlertTriangle className="w-6 h-6" />
             </div>
 
             <div>
-              <h3 className="text-lg font-black text-amber-400">
+              <h3 className="text-lg font-bold text-slate-900">
                 {t.tabSwitchWarningTitle}
               </h3>
-              <p className="text-xs text-slate-300 mt-2 leading-relaxed">
+              <p className="text-xs text-slate-600 mt-2 leading-relaxed">
                 {t.tabSwitchWarningDesc}
               </p>
             </div>
 
             <button
+              type="button"
               onClick={dismissWarning}
-              className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold py-3 rounded-xl text-xs transition-all shadow-md active:scale-98"
+              className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-2.5 rounded-xl text-xs transition-colors shadow-xs"
             >
               {t.iUnderstandContinue}
             </button>
@@ -359,72 +350,51 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({
         </div>
       )}
 
-      {/* Top 320s (5m 20s) Linear Progress Bar */}
-      <div className="w-full bg-slate-900 h-1.5 relative overflow-hidden">
+      {/* Top Total Progress Line */}
+      <div className="w-full bg-slate-200 h-1 relative overflow-hidden">
         <div
-          className="h-full bg-gradient-to-r from-emerald-500 via-amber-500 to-rose-500 transition-all duration-200 ease-linear"
+          className="h-full bg-slate-900 transition-all duration-200 ease-linear"
           style={{ width: `${Math.min(100, totalProgressPercent)}%` }}
         />
       </div>
 
       {/* Reconnecting / Offline Simulation Banner */}
       {isOfflineSimulated && (
-        <div className="bg-amber-600 text-white text-xs font-semibold py-1.5 px-4 flex items-center justify-center gap-2 animate-pulse">
+        <div className="bg-amber-600 text-white text-xs font-semibold py-1 px-4 flex items-center justify-center gap-2">
           <WifiOff className="w-3.5 h-3.5" />
           <span>{t.reconnecting}</span>
         </div>
       )}
 
-      {/* Exam Header */}
-      <header className="px-4 py-3 border-b border-slate-800/80 bg-slate-900/60 backdrop-blur-sm flex items-center justify-between">
+      {/* Clean Exam Header */}
+      <header className="px-4 py-3 border-b border-slate-200 bg-white flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="bg-amber-500/20 text-amber-400 border border-amber-500/30 text-xs font-black px-2.5 py-1 rounded-md">
+          <div className="bg-slate-100 text-slate-800 border border-slate-200 text-xs font-bold px-2.5 py-1 rounded-md">
             {t.qNumber} {safeQIndex + 1} / {test.questions.length}
           </div>
-          <div className="hidden sm:block text-xs text-slate-400">
-            <span className="font-semibold text-slate-300">{currentQuestion.subject}</span> • {currentQuestion.topic}
+          <div className="hidden sm:block text-xs text-slate-600">
+            <span className="font-semibold text-slate-900">{currentQuestion.subject}</span> · {currentQuestion.topic}
           </div>
         </div>
 
-        {/* Center: Circular 12-second countdown timer */}
-        <div className="flex items-center gap-2">
-          <div className="relative w-12 h-12 flex items-center justify-center">
-            <svg className="w-12 h-12 -rotate-90">
-              <circle
-                cx="24"
-                cy="24"
-                r={radius}
-                stroke="#1e293b"
-                strokeWidth="4"
-                fill="none"
-              />
-              <circle
-                cx="24"
-                cy="24"
-                r={radius}
-                stroke={isUrgent ? '#ef4444' : '#f59e0b'}
-                strokeWidth="4"
-                fill="none"
-                strokeDasharray={circumference}
-                strokeDashoffset={strokeDashoffset}
-                strokeLinecap="round"
-                className={`transition-all duration-100 ease-linear ${isUrgent ? 'animate-pulse' : ''}`}
-              />
-            </svg>
+        {/* Center: 12-second countdown timer */}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg border border-slate-200 bg-slate-50">
+            <Clock className={`w-4 h-4 ${isUrgent ? 'text-rose-600' : 'text-slate-700'}`} />
             <span
-              className={`absolute font-mono font-black text-sm ${
-                isUrgent ? 'text-rose-400 scale-110' : 'text-amber-400'
-              } transition-all`}
+              className={`font-mono font-bold text-sm tabular-nums ${
+                isUrgent ? 'text-rose-600' : 'text-slate-900'
+              }`}
             >
               {questionSecondsLeft}{t.secLeft}
             </span>
           </div>
 
-          <div className="text-right">
-            <div className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">
-              {t.totalTime} (5m 20s)
+          <div className="text-right hidden sm:block">
+            <div className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">
+              Total Clock
             </div>
-            <div className="text-xs font-mono font-bold text-slate-200">
+            <div className="text-xs font-mono font-bold text-slate-800 tabular-nums">
               {Math.floor(totalSecondsLeft / 60)}:
               {String(Math.floor(totalSecondsLeft % 60)).padStart(2, '0')}
             </div>
@@ -433,36 +403,37 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({
 
         {/* Right: Integrity status & Network simulator */}
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 text-[11px] font-mono text-slate-400 bg-slate-800 px-2 py-1 rounded-md">
-            <ShieldAlert className={`w-3.5 h-3.5 ${violationCount > 0 ? 'text-amber-400' : 'text-emerald-400'}`} />
+          <div className="flex items-center gap-1 text-[11px] font-mono text-slate-600 bg-slate-100 border border-slate-200 px-2 py-1 rounded-md">
+            <ShieldAlert className={`w-3.5 h-3.5 ${violationCount > 0 ? 'text-amber-600' : 'text-slate-500'}`} />
             <span>{violationCount}/2</span>
           </div>
 
           <button
+            type="button"
             onClick={() => setIsOfflineSimulated(!isOfflineSimulated)}
             title="Simulate 4G network reconnection"
-            className="p-1 rounded bg-slate-800 text-slate-400 hover:text-slate-200 text-xs"
+            className="p-1.5 rounded-md border border-slate-200 text-slate-500 hover:text-slate-800 hover:bg-slate-50"
           >
-            {isOfflineSimulated ? <WifiOff className="w-3.5 h-3.5 text-rose-400" /> : <Wifi className="w-3.5 h-3.5" />}
+            {isOfflineSimulated ? <WifiOff className="w-3.5 h-3.5 text-rose-600" /> : <Wifi className="w-3.5 h-3.5" />}
           </button>
         </div>
       </header>
 
       {/* Main Question Body */}
-      <main className="max-w-2xl w-full mx-auto px-4 py-6 flex-1 flex flex-col justify-center">
+      <main className="max-w-2xl w-full mx-auto px-4 py-8 flex-1 flex flex-col justify-center">
         <div className="sm:hidden mb-2">
-          <span className="text-[11px] font-semibold text-amber-400/90 bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/20">
+          <span className="text-[11px] font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
             {currentQuestion.subject}
           </span>
         </div>
 
         <div className="mb-6">
-          <h1 className="text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-white leading-relaxed">
+          <h1 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 leading-relaxed">
             {questionText}
           </h1>
         </div>
 
-        {/* 4 Full-Width Option Cards with 48px tap targets */}
+        {/* 4 Full-Width Option Cards */}
         <div className="space-y-3">
           {currentQuestion.options.map((_, optIdx) => {
             const letter = String.fromCharCode(65 + optIdx);
@@ -472,22 +443,23 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({
             return (
               <button
                 key={optIdx}
+                type="button"
                 onClick={() => handleSelectOption(optIdx)}
                 disabled={isOptionLocked}
-                className={`w-full min-h-[52px] p-3.5 sm:p-4 rounded-xl text-left transition-all border flex items-center justify-between text-sm sm:text-base font-medium active:scale-[0.99] ${
+                className={`w-full min-h-[50px] p-3.5 sm:p-4 rounded-xl text-left transition-colors border flex items-center justify-between text-sm sm:text-base font-medium ${
                   isSelected
-                    ? 'bg-amber-500 text-slate-950 border-amber-400 font-bold shadow-lg shadow-amber-500/20 ring-2 ring-amber-400/50'
+                    ? 'bg-slate-900 text-white border-slate-900 font-semibold shadow-xs'
                     : isOptionLocked
-                    ? 'bg-slate-900/40 text-slate-500 border-slate-800 cursor-not-allowed opacity-60'
-                    : 'bg-slate-900/90 hover:bg-slate-800 text-slate-200 border-slate-800 hover:border-slate-700'
+                    ? 'bg-slate-50 text-slate-400 border-slate-200 cursor-not-allowed opacity-70'
+                    : 'bg-white hover:bg-slate-50 text-slate-800 border-slate-200 shadow-xs'
                 }`}
               >
                 <div className="flex items-center gap-3">
                   <span
-                    className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black ${
+                    className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold ${
                       isSelected
-                        ? 'bg-slate-950 text-amber-400'
-                        : 'bg-slate-800 text-slate-300 border border-slate-700'
+                        ? 'bg-white text-slate-900'
+                        : 'bg-slate-100 text-slate-700 border border-slate-200'
                     }`}
                   >
                     {letter}
@@ -496,7 +468,7 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({
                 </div>
 
                 {isSelected && (
-                  <CheckCircle2 className="w-5 h-5 text-slate-950 fill-current shrink-0 ml-2" />
+                  <CheckCircle2 className="w-5 h-5 text-white shrink-0 ml-2" />
                 )}
               </button>
             );
@@ -505,14 +477,15 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({
 
         {/* Option Locked Status Indicator */}
         {isOptionLocked && (
-          <div className="mt-4 flex items-center justify-between text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 px-3 py-2 rounded-lg">
+          <div className="mt-4 flex items-center justify-between text-xs text-slate-700 bg-slate-100 border border-slate-200 px-3.5 py-2.5 rounded-lg">
             <div className="flex items-center gap-1.5 font-medium">
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>{t.optionLocked} {questionSecondsLeft}s...</span>
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              <span>{t.optionLocked} Advancing in {questionSecondsLeft}s...</span>
             </div>
             <button
+              type="button"
               onClick={advanceQuestion}
-              className="text-white bg-amber-600 hover:bg-amber-500 px-2.5 py-1 rounded text-[11px] font-bold"
+              className="text-white bg-slate-900 hover:bg-slate-800 px-2.5 py-1 rounded text-[11px] font-semibold"
             >
               {t.skipWait}
             </button>
@@ -520,16 +493,17 @@ export const ExamRunner: React.FC<ExamRunnerProps> = ({
         )}
       </main>
 
-      {/* Exam Screen Footer */}
-      <footer className="px-4 py-3 bg-slate-900/40 border-t border-slate-800/80 text-xs text-slate-500 flex items-center justify-between">
+      {/* Clean Footer */}
+      <footer className="px-4 py-3 bg-white border-t border-slate-200 text-xs text-slate-500 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          <span className="w-2 h-2 rounded-full bg-emerald-600" />
           <span>{t.serverClockActive}</span>
         </div>
         <div className="flex items-center gap-3">
           <button
+            type="button"
             onClick={() => triggerCompletion()}
-            className="text-[11px] font-bold text-amber-400 hover:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 px-3 py-1 rounded-lg transition-colors cursor-pointer"
+            className="text-[11px] font-semibold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-200 px-3 py-1 rounded-md transition-colors"
           >
             Submit Paper
           </button>

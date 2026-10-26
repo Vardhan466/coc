@@ -29,25 +29,26 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   ];
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-slate-900 border-t border-slate-800 z-30 shadow-2xl pb-[env(safe-area-inset-bottom)]">
-      <div className="grid grid-cols-5 h-16">
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-30 shadow-sm pb-[env(safe-area-inset-bottom)]">
+      <div className="grid grid-cols-5 h-14">
         {items.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
           return (
             <button
               key={item.id}
+              type="button"
               onClick={() => setActiveTab(item.id)}
               className={`flex flex-col items-center justify-center gap-1 transition-colors relative min-h-[48px] px-1 ${
-                isActive ? 'text-amber-400 font-bold' : 'text-slate-400 hover:text-slate-200'
+                isActive ? 'text-slate-900 font-semibold' : 'text-slate-500 hover:text-slate-800'
               }`}
             >
-              <Icon className={`w-5 h-5 ${isActive ? 'stroke-[2.5]' : 'stroke-2'}`} />
-              <span className="text-[9px] sm:text-[10px] tracking-tight truncate max-w-full text-center">
+              <Icon className="w-4 h-4" />
+              <span className="text-[10px] tracking-tight truncate max-w-full text-center">
                 {item.label}
               </span>
               {isActive && (
-                <div className="absolute top-0 w-8 h-0.5 bg-amber-400 rounded-full" />
+                <div className="absolute top-0 w-8 h-0.5 bg-slate-900 rounded-full" />
               )}
             </button>
           );

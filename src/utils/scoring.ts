@@ -38,7 +38,9 @@ export function calculateTieBreakerRank(attempts: Attempt[]): Attempt[] {
     // 3. Incorrect count asc (fewer penalties)
     if (a.incorrectCount !== b.incorrectCount) return a.incorrectCount - b.incorrectCount;
     // 4. Time taken asc (faster submission)
-    if (a.timeTakenSeconds !== b.timeTakenSeconds) return a.timeTakenSeconds - b.timeTakenSeconds;
+    const aTime = a.timeTakenSeconds ?? a.totalTimeSeconds ?? 0;
+    const bTime = b.timeTakenSeconds ?? b.totalTimeSeconds ?? 0;
+    if (aTime !== bTime) return aTime - bTime;
     // 5. Stable fallback by studentId
     return a.studentId.localeCompare(b.studentId);
   });
@@ -49,11 +51,13 @@ export function calculateTieBreakerRank(attempts: Attempt[]): Attempt[] {
   return sorted.map((attempt, index) => {
     if (index > 0) {
       const prev = sorted[index - 1];
+      const prevTime = prev.timeTakenSeconds ?? prev.totalTimeSeconds ?? 0;
+      const attemptTime = attempt.timeTakenSeconds ?? attempt.totalTimeSeconds ?? 0;
       const isIdentical =
         prev.score === attempt.score &&
         prev.correctCount === attempt.correctCount &&
         prev.incorrectCount === attempt.incorrectCount &&
-        prev.timeTakenSeconds === attempt.timeTakenSeconds;
+        prevTime === attemptTime;
 
       if (!isIdentical) {
         currentRank = index + 1;
@@ -117,7 +121,7 @@ export function checkQuestionDefect(
 
 /**
  * Validates a test paper for official publication:
- * Requires exactly 40 valid questions, 4 options each, valid correct index, tags.
+ * Requires exactly 30 valid questions, 4 options each, valid correct index, tags.
  */
 export function validateTestPaper(test: Partial<TestPaper>): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
@@ -126,8 +130,8 @@ export function validateTestPaper(test: Partial<TestPaper>): { valid: boolean; e
     errors.push('Test paper title is required.');
   }
 
-  if (!test.questions || test.questions.length !== 40) {
-    errors.push(`Official test must contain exactly 40 questions (found ${test.questions?.length ?? 0}).`);
+  if (!test.questions || test.questions.length !== 30) {
+    errors.push(`Official test must contain exactly 30 questions (found ${test.questions?.length ?? 0}).`);
   } else {
     test.questions.forEach((q, idx) => {
       const qNum = idx + 1;

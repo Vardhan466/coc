@@ -25,7 +25,7 @@ import {
   SAMPLE_40_QUESTIONS,
 } from './data/mockExamData';
 import { calculateTieBreakerRank, calculateScore, calculateNegativeMarkLoss } from './utils/scoring';
-import { SimulationBar } from './components/SimulationBar';
+
 import { Header } from './components/Header';
 import { BottomNav } from './components/BottomNav';
 import { TestsView } from './components/TestsView';
@@ -300,16 +300,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100/60 text-slate-900 flex flex-col font-sans pb-20 md:pb-8">
-      {/* Simulation Controls Top Bar (No role dropdown, read-only session badge) */}
-      <SimulationBar
-        currentSimulatedTime={currentSimulatedTime}
-        setSimulatedTime={setCurrentSimulatedTime}
-        user={user}
-        onLaunchExam={() => handleStartExam(testPapers[0])}
-        isExamActive={isExamActive}
-      />
-
+    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 flex flex-col font-sans pb-20 md:pb-8">
       {/* Main Header with Settings Trigger & Sign Out */}
       <Header
         user={user}
@@ -348,9 +339,11 @@ export default function App() {
               <TestsView
                 testPapers={testPapers}
                 user={user}
+                userAttempt={userAttempt}
                 currentSimulatedTime={currentSimulatedTime}
                 onStartExam={handleStartExam}
                 onNavigateToProfile={() => handleSetActiveTab('profile')}
+                onNavigateToResults={() => handleSetActiveTab('results')}
               />
             )}
 
