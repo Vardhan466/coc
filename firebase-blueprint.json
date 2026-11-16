@@ -1,0 +1,425 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Private student or administrator account document containing PII",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Firebase Auth UID of the user",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "studentId": {
+          "type": "string",
+          "description": "Unique deterministic student roll number (e.g. COC-2026-98124)",
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "description": "Candidate full legal name",
+          "minLength": 2,
+          "maxLength": 120
+        },
+        "email": {
+          "type": "string",
+          "description": "Registered email address",
+          "maxLength": 128
+        },
+        "phone": {
+          "type": "string",
+          "description": "Optional phone number",
+          "maxLength": 24
+        },
+        "state": {
+          "type": "string",
+          "description": "State or Union Territory in India",
+          "maxLength": 80
+        },
+        "district": {
+          "type": "string",
+          "description": "District in India",
+          "maxLength": 80
+        },
+        "targetExam": {
+          "type": "string",
+          "description": "Target competitive examination",
+          "maxLength": 80
+        },
+        "batch": {
+          "type": "string",
+          "description": "Study batch or tier pass",
+          "maxLength": 80
+        },
+        "dailyStreak": {
+          "type": "number",
+          "description": "Consecutive active exam participation streak count"
+        },
+        "streakFreezes": {
+          "type": "number",
+          "description": "Available Streak Freeze shields"
+        },
+        "skillTier": {
+          "type": "string",
+          "description": "Assigned skill bracket",
+          "enum": ["Bronze", "Silver", "Gold", "Grandmaster"]
+        },
+        "referralCode": {
+          "type": "string",
+          "description": "Referral invite code",
+          "maxLength": 64
+        },
+        "referredBy": {
+          "type": "string",
+          "description": "Referrer identifier",
+          "maxLength": 64
+        },
+        "badges": {
+          "type": "array",
+          "description": "Bounded earned milestone badge titles (max 25)"
+        },
+        "role": {
+          "type": "string",
+          "description": "Permission role",
+          "enum": ["student", "admin", "superAdmin"]
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Server creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Server update timestamp"
+        }
+      },
+      "required": ["id", "studentId", "name", "email", "state", "district", "role", "createdAt", "updatedAt"]
+    },
+    "UserProgress": {
+      "title": "UserProgress",
+      "description": "Student dynamic learning analytics and streak calendar history",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "testsTaken": { "type": "number" },
+        "averageScore": { "type": "number" },
+        "highestScore": { "type": "number" },
+        "overallAccuracy": { "type": "number" },
+        "bestRank": { "type": "number" },
+        "currentStreak": { "type": "number" },
+        "longestStreak": { "type": "number" },
+        "streakFreezesAvailable": { "type": "number" },
+        "streakFreezesUsed": { "type": "number" },
+        "frozenDates": { "type": "array" },
+        "claimedMilestones": { "type": "array" },
+        "lastActivityDate": { "type": "string", "maxLength": 20 },
+        "lastFreezeConsumedDate": { "type": "string", "maxLength": 20 },
+        "skillTier": {
+          "type": "string",
+          "enum": ["Bronze", "Silver", "Gold", "Grandmaster"]
+        },
+        "xpPoints": { "type": "number" },
+        "proAnalyticsUnlocked": { "type": "boolean" },
+        "referralsCount": { "type": "number" },
+        "badges": { "type": "array" },
+        "marksLostToNegatives": { "type": "number" },
+        "rapidMistakesCount": { "type": "number" },
+        "subjectPerformance": { "type": "array" },
+        "weakestTopics": { "type": "array" },
+        "recentAttempts": { "type": "array" },
+        "rolling30DayHistory": { "type": "array" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["userId", "testsTaken", "currentStreak", "skillTier", "updatedAt"]
+    },
+    "ExamAttempt": {
+      "title": "ExamAttempt",
+      "description": "Immutable recorded submission for an exam",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "userId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "studentId": { "type": "string", "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "studentName": { "type": "string", "maxLength": 120 },
+        "studentState": { "type": "string", "maxLength": 80 },
+        "testId": { "type": "string", "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "score": { "type": "number" },
+        "correctCount": { "type": "number" },
+        "incorrectCount": { "type": "number" },
+        "unattemptedCount": { "type": "number" },
+        "timeTakenSeconds": { "type": "number" },
+        "isDisqualified": { "type": "boolean" },
+        "submittedAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "studentId", "studentName", "testId", "score", "correctCount", "incorrectCount", "unattemptedCount", "timeTakenSeconds", "isDisqualified", "submittedAt"]
+    },
+    "LeaderboardEntry": {
+      "title": "LeaderboardEntry",
+      "description": "PII-free public daily ranking entry",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "studentId": { "type": "string", "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "studentName": { "type": "string", "maxLength": 120 },
+        "studentState": { "type": "string", "maxLength": 80 },
+        "testId": { "type": "string", "maxLength": 64 },
+        "score": { "type": "number" },
+        "correctCount": { "type": "number" },
+        "incorrectCount": { "type": "number" },
+        "unattemptedCount": { "type": "number" },
+        "timeTakenSeconds": { "type": "number" },
+        "skillTier": {
+          "type": "string",
+          "enum": ["Bronze", "Silver", "Gold", "Grandmaster"]
+        },
+        "isDisqualified": { "type": "boolean" },
+        "submittedAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "studentId", "studentName", "testId", "score", "timeTakenSeconds", "submittedAt"]
+    },
+    "ScheduledTest": {
+      "title": "ScheduledTest",
+      "description": "Admin-managed daily or custom scheduled mock test",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "title": { "type": "string", "maxLength": 160 },
+        "description": { "type": "string", "maxLength": 500 },
+        "testType": { "type": "string", "enum": ["daily", "custom"] },
+        "scheduledDate": { "type": "string", "maxLength": 20 },
+        "scheduledStartTime": { "type": "string", "maxLength": 12 },
+        "scheduledEndTime": { "type": "string", "maxLength": 12 },
+        "durationSeconds": { "type": "number" },
+        "status": { "type": "string", "enum": ["draft", "validated", "scheduled", "live", "closed", "published"] },
+        "questions": { "type": "array" },
+        "createdBy": { "type": "string", "maxLength": 128 },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "title", "testType", "scheduledDate", "durationSeconds", "status", "createdBy", "updatedAt"]
+    },
+    "PreviousYearPaper": {
+      "title": "PreviousYearPaper",
+      "description": "Admin-uploaded Previous Year Question Paper archive entry",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "title": { "type": "string", "maxLength": 160 },
+        "examCategory": { "type": "string", "maxLength": 80 },
+        "year": { "type": "number" },
+        "shiftLabel": { "type": "string", "maxLength": 60 },
+        "durationSeconds": { "type": "number" },
+        "questions": { "type": "array" },
+        "uploadedBy": { "type": "string", "maxLength": 128 },
+        "uploadedAt": { "type": "string" }
+      },
+      "required": ["id", "title", "examCategory", "year", "durationSeconds", "questions", "uploadedBy", "uploadedAt"]
+    },
+    "KeySheet": {
+      "title": "KeySheet",
+      "description": "Post-8:00 PM IST Answer Key Sheet released per daily exam date",
+      "type": "object",
+      "properties": {
+        "examDate": { "type": "string", "maxLength": 20, "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+        "title": { "type": "string", "maxLength": 160 },
+        "unlockTimestampMs": { "type": "number" },
+        "items": { "type": "array" },
+        "publishedBy": { "type": "string", "maxLength": 128 },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["examDate", "title", "unlockTimestampMs", "items", "publishedBy", "updatedAt"]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "Immutable security, exam integrity, and admin lifecycle audit event",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "actorUid": { "type": "string", "maxLength": 128 },
+        "eventType": { "type": "string", "maxLength": 64 },
+        "action": { "type": "string", "maxLength": 120 },
+        "details": { "type": "string", "maxLength": 500 },
+        "timestamp": { "type": "string" }
+      },
+      "required": ["id", "actorUid", "eventType", "action", "details", "timestamp"]
+    },
+    "AdminMembership": {
+      "title": "AdminMembership",
+      "description": "Server/SuperAdmin provisioned admin marker",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "grantedBy": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["uid", "grantedBy", "createdAt"]
+    },
+    "ConnectionHealth": {
+      "title": "ConnectionHealth",
+      "description": "Read-only connection verification marker",
+      "type": "object",
+      "properties": {
+        "ok": { "type": "boolean" }
+      }
+    },
+    "SpeedPracticeSession": {
+      "title": "SpeedPracticeSession",
+      "description": "Isolated student speed practice & topic drill metrics (non-ranking)",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "userId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "examCategory": { "type": "string", "maxLength": 80 },
+        "subject": { "type": "string", "maxLength": 80 },
+        "difficulty": { "type": "string", "enum": ["all", "easy", "medium", "hard"] },
+        "poolFilter": { "type": "string", "enum": ["all", "incorrect", "unattempted"] },
+        "totalQuestions": { "type": "number" },
+        "correctCount": { "type": "number" },
+        "incorrectCount": { "type": "number" },
+        "accuracy": { "type": "number" },
+        "avgTimePerQuestionSec": { "type": "number" },
+        "completedAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "totalQuestions", "correctCount", "accuracy", "completedAt"]
+    },
+    "StudyPlanOverride": {
+      "title": "StudyPlanOverride",
+      "description": "Admin-customized day schedule overrides for the 100-week study plan",
+      "type": "object",
+      "properties": {
+        "dayKey": { "type": "string", "maxLength": 16, "pattern": "^W[0-9]{3}_D[1-7]$" },
+        "subject": { "type": "string", "maxLength": 80 },
+        "topic": { "type": "string", "maxLength": 200 },
+        "topicDescription": { "type": "string", "maxLength": 600 },
+        "learningObjectives": { "type": "array" },
+        "approvalStatus": { "type": "string", "enum": ["approved", "pending_review", "rescheduled"] },
+        "scheduledDateOverride": { "type": "string", "maxLength": 20 },
+        "updatedBy": { "type": "string", "maxLength": 128 },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["dayKey", "approvalStatus", "updatedBy", "updatedAt"]
+    },
+    "AIMCQQuestion": {
+      "title": "AIMCQQuestion",
+      "description": "Admin-reviewed AI-generated or curated competitive exam MCQ vault item",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "text": { "type": "string", "maxLength": 2000 },
+        "options": { "type": "array" },
+        "correctIndex": { "type": "number" },
+        "explanation": { "type": "string", "maxLength": 2000 },
+        "subject": { "type": "string", "maxLength": 80 },
+        "topic": { "type": "string", "maxLength": 160 },
+        "difficulty": { "type": "string", "enum": ["easy", "medium", "hard"] },
+        "examCategory": { "type": "string", "maxLength": 80 },
+        "reviewStatus": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "sourceType": { "type": "string", "enum": ["ai_generated", "admin_curated", "verified_pqp"] },
+        "referenceNote": { "type": "string", "maxLength": 200 },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "text", "options", "correctIndex", "subject", "topic", "difficulty", "examCategory", "reviewStatus", "updatedAt"]
+    },
+    "AppPublicSettings": {
+      "title": "AppPublicSettings",
+      "description": "Non-secret public exam schedule timings, leaderboard visibility mode, and active AI model name",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "questionGenerationTime": { "type": "string", "maxLength": 10 },
+        "examStartTime": { "type": "string", "maxLength": 10 },
+        "examEndTime": { "type": "string", "maxLength": 10 },
+        "answerKeyReleaseTime": { "type": "string", "maxLength": 10 },
+        "leaderboardVisibility": { "type": "string", "enum": ["public", "top_only", "hidden_from_students"] },
+        "activeModel": { "type": "string", "maxLength": 64 },
+        "cohortStartDate": { "type": "string", "maxLength": 20 },
+        "updatedBy": { "type": "string", "maxLength": 128 },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "examStartTime", "examEndTime", "answerKeyReleaseTime", "leaderboardVisibility", "updatedBy", "updatedAt"]
+    },
+    "AIUsageLog": {
+      "title": "AIUsageLog",
+      "description": "Admin-only AI generation and connectivity quota audit entry",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "actorUid": { "type": "string", "maxLength": 128 },
+        "operation": { "type": "string", "maxLength": 64 },
+        "model": { "type": "string", "maxLength": 64 },
+        "status": { "type": "string", "enum": ["success", "rate_limited", "error"] },
+        "latencyMs": { "type": "number" },
+        "itemsGenerated": { "type": "number" },
+        "timestamp": { "type": "string" }
+      },
+      "required": ["id", "actorUid", "operation", "model", "status", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Private user account profiles with PII (restricted to owner and verified SuperAdmin)"
+    },
+    "/users/{userId}/attempts/{attemptId}": {
+      "schema": { "$ref": "#/entities/ExamAttempt" },
+      "description": "Immutable exam attempt logs scoped by user UID"
+    },
+    "/users/{userId}/progress/{progressId}": {
+      "schema": { "$ref": "#/entities/UserProgress" },
+      "description": "User progress metrics and 30-day rolling history"
+    },
+    "/users/{userId}/speed_practice/{sessionId}": {
+      "schema": { "$ref": "#/entities/SpeedPracticeSession" },
+      "description": "Student speed practice and topic drill metrics isolated from official rankings"
+    },
+    "/daily_exams/{examDate}/leaderboard/{studentId}": {
+      "schema": { "$ref": "#/entities/LeaderboardEntry" },
+      "description": "Public PII-free daily exam ranking entries per IST exam date"
+    },
+    "/scheduled_tests/{testId}": {
+      "schema": { "$ref": "#/entities/ScheduledTest" },
+      "description": "Scheduled daily and custom practice tests"
+    },
+    "/pqps/{pqpId}": {
+      "schema": { "$ref": "#/entities/PreviousYearPaper" },
+      "description": "Previous Year Question Papers uploaded by admins"
+    },
+    "/key_sheets/{examDate}": {
+      "schema": { "$ref": "#/entities/KeySheet" },
+      "description": "Post-8 PM IST official answer keys and explanations"
+    },
+    "/study_plan_overrides/{dayKey}": {
+      "schema": { "$ref": "#/entities/StudyPlanOverride" },
+      "description": "100-week syllabus customizations authored by verified admins"
+    },
+    "/ai_question_vault/{questionId}": {
+      "schema": { "$ref": "#/entities/AIMCQQuestion" },
+      "description": "Admin-only AI MCQ generation and approval vault"
+    },
+    "/app_settings/{settingId}": {
+      "schema": { "$ref": "#/entities/AppPublicSettings" },
+      "description": "Non-secret public schedule and visibility configuration"
+    },
+    "/ai_usage_logs/{logId}": {
+      "schema": { "$ref": "#/entities/AIUsageLog" },
+      "description": "Admin-only AI API quota and latency telemetry"
+    },
+    "/audit_logs/{logId}": {
+      "schema": { "$ref": "#/entities/AuditLog" },
+      "description": "Immutable integrity and admin audit trail"
+    },
+    "/admins/{uid}": {
+      "schema": { "$ref": "#/entities/AdminMembership" },
+      "description": "Admin authorization registry checked by Firestore rules"
+    },
+    "/test/{docId}": {
+      "schema": { "$ref": "#/entities/ConnectionHealth" },
+      "description": "Single read-only connection healthcheck marker at test/connection"
+    }
+  }
+}

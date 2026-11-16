@@ -9,13 +9,21 @@ export type ExamTarget =
   | 'Police SI & Constable';
 
 export type LanguageCode = 'en' | 'te' | 'hi';
+export type DataSource = 'firestore' | 'mock' | 'local';
 
 export interface UserAddress {
   local: string;
   district: string;
   state: string;
   country: string;
+  stateCode?: string;
+  districtCode?: string;
+  otherStateText?: string;
+  otherDistrictText?: string;
 }
+
+export type SkillTier = 'Bronze' | 'Silver' | 'Gold' | 'Grandmaster';
+export type LeaderboardTimeframe = 'today' | 'weekly' | 'monthly' | 'all_time';
 
 export interface UserProfile {
   uid: string;
@@ -30,6 +38,10 @@ export interface UserProfile {
   role: UserRole;
   createdAt: string;
   dpdpConsent: boolean;
+  referralCode?: string;
+  referredBy?: string;
+  skillTier?: SkillTier;
+  badges?: string[];
   subscription: {
     isActive: boolean;
     plan: 'Pro Daily Pass' | 'Annual Elite';
@@ -68,14 +80,26 @@ export interface TestPaper {
   date: string; // YYYY-MM-DD
   windowStart: string; // "19:00" IST
   windowEnd: string; // "19:15" IST
-  answerKeyReleaseTime: string; // "20:15" IST
+  answerKeyReleaseTime: string; // "20:00" IST
   totalQuestions: number; // 30
   totalDurationSeconds: number; // 300
   questionDurationSeconds: number; // 10
+  resultsPublishAt?: string; // "19:30" IST (default)
   status: TestStatus;
   questions: Question[];
   lockedForEditing: boolean;
   totalSubscribers: number;
+  dataSource?: DataSource;
+  isCustomScheduled?: boolean; // Flag for ad-hoc / admin-scheduled tests outside 7 PM
+  scheduledDate?: string; // YYYY-MM-DD
+  scheduledStartTime?: string; // e.g. "20:30"
+  scheduledEndTime?: string; // e.g. "20:45"
+  windowMinutes?: number;
+  scheduledWindowMinutes?: number;
+  category?: string;
+  creatorEmail?: string;
+  createdAt?: string;
+  isSpeedPractice?: boolean;
 }
 
 export interface AttemptAnswer {
@@ -96,6 +120,8 @@ export interface Attempt {
   studentId: string;
   studentName: string;
   studentState: string;
+  studentCity?: string;
+  batch?: string;
   startedAt?: string;
   completedAt?: string;
   submittedAt?: string;
@@ -108,13 +134,37 @@ export interface Attempt {
   totalTimeSeconds?: number;
   rank?: number;
   percentile?: number;
+  isCustomTest?: boolean;
+  customTestTitle?: string;
   integrityFlags?: {
     tabSwitches: number;
     focusLosses: number;
   };
+  telemetry?: import('./exam').TelemetryReport;
   isDisqualified?: boolean;
   disqualificationReason?: string;
+  skillTier?: SkillTier;
+  xpEarned?: number;
+  dataSource?: DataSource;
+  isSeededBenchmark?: boolean;
 }
+
+export interface OverallProgressEntry {
+  rank: number;
+  studentId: string;
+  studentName: string;
+  studentState: string;
+  studentCity?: string;
+  batch?: string;
+  totalMarks: number;
+  accuracy: number;
+  testsAttended: number;
+  streakDays: number;
+  dataSource: DataSource;
+}
+
+export * from './exam';
+export * from './aiSystem';
 
 export interface QuestionAnalytic {
   questionId: string;
@@ -155,6 +205,51 @@ export interface DailyAggregate {
   atRiskStudentsCount: number;
 }
 
+export interface RollingDayPoint {
+  date: string; // YYYY-MM-DD
+  label: string; // e.g. "Oct 24"
+  accuracy: number;
+  avgSpeedSec: number;
+  score: number;
+  testsCount: number;
+}
+
+export interface DiagnosticResponseItem {
+  questionId: string;
+  selectedOptionIndex: number | null;
+  timeSpentSeconds: number;
+  isCorrect: boolean;
+  subject: SubjectTag;
+}
+
+export interface DiagnosticResult {
+  completedAt: string;
+  score: number;
+  maxScore: number;
+  correctCount: number;
+  incorrectCount: number;
+  skippedCount: number;
+  accuracy: number;
+  avgTimePerQuestionSec: number;
+  estimatedPercentile: number;
+  estimatedRank: number;
+  assignedTier: SkillTier;
+  weakSubject?: SubjectTag;
+  strengthSubject?: SubjectTag;
+  responses: DiagnosticResponseItem[];
+}
+
+export interface SmartTriggerNotification {
+  id: string;
+  type: 'rank_drop' | 'streak_risk' | 'streak_freeze' | 'referral_unlock' | 'mistake_leak';
+  title: string;
+  message: string;
+  actionLabel: string;
+  targetTab: 'tests' | 'results' | 'progress' | 'practice' | 'profile';
+  createdAt: string;
+  read: boolean;
+}
+
 export interface StudentProgressStats {
   testsTaken: number;
   averageScore: number;
@@ -162,6 +257,21 @@ export interface StudentProgressStats {
   overallAccuracy: number;
   bestRank: number;
   currentStreak: number;
+  longestStreak?: number;
+  streakFreezesAvailable?: number;
+  streakFreezesUsed?: number;
+  lastActivityDate?: string;
+  lastFreezeConsumedDate?: string;
+  frozenDates?: string[];
+  claimedMilestones?: number[];
+  skillTier?: SkillTier;
+  xpPoints?: number;
+  proAnalyticsUnlocked?: boolean;
+  referralsCount?: number;
+  badges?: string[];
+  diagnosticResult?: DiagnosticResult;
+  rolling30DayHistory?: RollingDayPoint[];
+  dailyGoalScore?: number;
   marksLostToNegatives: number;
   rapidMistakesCount: number; // questions answered in <2s that were wrong
   subjectPerformance: {
@@ -180,12 +290,14 @@ export interface StudentProgressStats {
   }[];
   recentAttempts: {
     testDate: string;
+    isoDate?: string;
     testTitle: string;
     score: number;
     peerAvgScore: number;
     rank: number;
     percentile: number;
     accuracy: number;
+    avgSpeedSec?: number;
   }[];
 }
 
@@ -197,3 +309,52 @@ export interface AuditLogEntry {
   action: string;
   details: string;
 }
+
+export interface PreviousYearPaper {
+  id: string;
+  title: string;
+  examBoard: string;
+  year: number;
+  shiftLabel?: string;
+  questions: Question[];
+  totalQuestions: number;
+  totalDurationSeconds: number;
+  uploadedAt: string;
+  uploadedBy?: string;
+}
+
+export interface PublicLeaderboardEntry {
+  id: string;
+  studentId: string;
+  studentName: string;
+  studentState: string;
+  studentCity?: string;
+  batch?: string;
+  testId: string;
+  score: number;
+  correctCount: number;
+  incorrectCount: number;
+  unattemptedCount: number;
+  timeTakenSeconds: number;
+  submittedAt: string;
+  isDisqualified?: boolean;
+  skillTier?: SkillTier;
+}
+
+export interface KeySheetDoc {
+  examDate: string;
+  releaseAt: string;
+  questions: Question[];
+  updatedAt?: string;
+}
+
+export interface DailyKeySheet {
+  id: string;
+  date: string;
+  title: string;
+  publishedAt: string;
+  entries: Question[];
+  unlockTime: string; // "20:00" IST
+}
+
+

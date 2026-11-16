@@ -1,11 +1,16 @@
-import React, { useState } from 'react';
-import { UserProfile, ExamTarget, UserRole } from '../types';
-import { INDIAN_STATES_AND_DISTRICTS, formatStudentId } from '../utils/scoring';
+import React, { useState, useRef, useEffect } from 'react';
+import { UserProfile, ExamTarget, DiagnosticResult } from '../types';
+import { INDIAN_STATES_AND_DISTRICTS } from '../utils/scoring';
+import { authenticateUser, DEFAULT_ACCOUNTS } from '../data/authAccounts';
 import {
-  authenticateUser,
-  saveStoredAccount,
-  StoredAccount,
-} from '../data/authAccounts';
+  signUpWithFirebase,
+  signInWithFirebase,
+  signInWithFirebaseGoogle,
+  signInWithFirebaseGoogleRedirect,
+  setInteractiveAuthHold,
+  FirebaseAuthResult,
+} from '../utils/firebaseAuth';
+import { GoogleSignupContext } from '../utils/googleAuthHelpers';
 import {
   Lock,
   Mail,
@@ -14,13 +19,12 @@ import {
   CheckCircle2,
   X,
   ArrowRight,
-  Shield,
-  Sparkles,
   AlertCircle,
-  ShieldCheck,
-  BarChart2,
-  FileEdit,
-  GraduationCap,
+  MapPin,
+  Building,
+  Loader2,
+  Database,
+  ExternalLink,
 } from 'lucide-react';
 
 interface AuthModalProps {
@@ -28,6 +32,8 @@ interface AuthModalProps {
   onClose: () => void;
   initialMode?: 'login' | 'signup';
   onLoginSuccess: (user: UserProfile) => void;
+  pendingDiagnostic?: DiagnosticResult | null;
+  referralCode?: string | null;
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({
@@ -35,12 +41,45 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   onClose,
   initialMode = 'login',
   onLoginSuccess,
+  pendingDiagnostic,
+  referralCode,
 }) => {
   const [mode, setMode] = useState<'login' | 'signup'>(initialMode);
+  const signupCloseTimerRef = useRef<number | null>(null);
+  useEffect(() => {
+    setMode(initialMode);
+    if (isOpen) {
+      setLoginError(null);
+      setSignupError(null);
+      setSignupSuccessNote(null);
+      setGoogleError(null);
+      setGoogleErrorMeta(null);
+      setGoogleSuccessNote(null);
+      setShowFirebaseGuide(false);
+      setIsGoogleLoading(false);
+    }
+  }, [initialMode, isOpen]);
+  useEffect(() => {
+    return () => {
+      setInteractiveAuthHold(false);
+      if (signupCloseTimerRef.current !== null) {
+        window.clearTimeout(signupCloseTimerRef.current);
+      }
+    };
+  }, []);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState<boolean>(false);
+  const [googleError, setGoogleError] = useState<string | null>(null);
+  const [googleErrorMeta, setGoogleErrorMeta] = useState<{
+    canRetryRedirect?: boolean;
+    shouldSuggestNewTab?: boolean;
+    shouldShowConsoleHint?: boolean;
+  } | null>(null);
+  const [googleSuccessNote, setGoogleSuccessNote] = useState<string | null>(null);
 
-  // Login form state
-  const [loginIdentifier, setLoginIdentifier] = useState('admin@coc.in');
-  const [loginPassword, setLoginPassword] = useState('admin@password123');
+  // Login form state - strictly empty, NO hardcoded or prefilled credentials
+  const [loginIdentifier, setLoginIdentifier] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState<string | null>(null);
 
   // Signup form state
@@ -49,13 +88,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [phone, setPhone] = useState('');
   const [signupPassword, setSignupPassword] = useState('');
   const [state, setState] = useState('Andhra Pradesh');
-  const [district, setDistrict] = useState('Kurnool');
+  const [district, setDistrict] = useState('Visakhapatnam');
   const [examTarget, setExamTarget] = useState<ExamTarget>('SSC CGL / CHSL');
   const [dpdpConsent, setDpdpConsent] = useState(true);
+  const [signupError, setSignupError] = useState<string | null>(null);
   const [signupSuccessNote, setSignupSuccessNote] = useState<string | null>(null);
+  const [showFirebaseGuide, setShowFirebaseGuide] = useState<boolean>(false);
 
   if (!isOpen) return null;
 
+  const statesList = Object.keys(INDIAN_STATES_AND_DISTRICTS).sort();
   const availableDistricts = INDIAN_STATES_AND_DISTRICTS[state] || [];
 
   const handleStateChange = (newState: string) => {
@@ -64,112 +106,334 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setDistrict(districts[0] || '');
   };
 
-  const handleLoginSubmit = (e: React.FormEvent) => {
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError(null);
 
-    const result = authenticateUser(loginIdentifier, loginPassword);
-    if (!result.success || !result.user) {
-      setLoginError(result.error || 'Authentication failed. Please verify credentials.');
+    const iden = loginIdentifier.trim();
+    const pass = loginPassword.trim();
+
+    if (!iden || !pass) {
+      setLoginError('Please enter your Student ID or Email and Password.');
       return;
     }
 
-    onLoginSuccess(result.user);
-    onClose();
+    setIsLoading(true);
+
+    try {
+      // 1. If it's a built-in demo/admin account, authenticate locally first without noisy 400 probes
+      const isBuiltInEmail = DEFAULT_ACCOUNTS.some(
+        (acc) => acc.email.toLowerCase() === iden.toLowerCase()
+      );
+      if (isBuiltInEmail) {
+        const builtInRes = authenticateUser(iden, pass);
+        if (builtInRes.success && builtInRes.user) {
+          setIsLoading(false);
+          onLoginSuccess(builtInRes.user);
+          onClose();
+          return;
+        }
+        setIsLoading(false);
+        setLoginError(builtInRes.error || 'Invalid credentials for this account.');
+        return;
+      }
+
+      // 2. If it's any other email address, try Firebase Email Authentication first
+      if (iden.includes('@')) {
+        const fbRes = await signInWithFirebase(iden, pass);
+        if (fbRes.success && fbRes.user) {
+          setIsLoading(false);
+          onLoginSuccess(fbRes.user);
+          onClose();
+          return;
+        }
+
+        // If email/password provider is not enabled in Firebase Console, guide the user
+        if (fbRes.isProviderDisabled) {
+          setShowFirebaseGuide(true);
+          // Check local fallback
+          const localRes = authenticateUser(iden, pass);
+          if (localRes.success && localRes.user) {
+            setIsLoading(false);
+            onLoginSuccess(localRes.user);
+            onClose();
+            return;
+          }
+          setIsLoading(false);
+          setLoginError(fbRes.error || 'Firebase Email provider disabled.');
+          return;
+        }
+
+        // Try local accounts fallback as well
+        const localRes = authenticateUser(iden, pass);
+        if (localRes.success && localRes.user) {
+          setIsLoading(false);
+          onLoginSuccess(localRes.user);
+          onClose();
+          return;
+        }
+
+        setIsLoading(false);
+        setLoginError(fbRes.error || 'Invalid email or password.');
+        return;
+      }
+
+      // 2. If it's a Student ID (COC-2026-XXXXX), check local stored accounts
+      const localResult = authenticateUser(iden, pass);
+      if (localResult.success && localResult.user) {
+        setIsLoading(false);
+        onLoginSuccess(localResult.user);
+        onClose();
+        return;
+      }
+
+      setIsLoading(false);
+      setLoginError(localResult.error || 'No matching student record found for this ID/password.');
+    } catch (err: any) {
+      setIsLoading(false);
+      setLoginError(err?.message || 'Authentication error.');
+    }
   };
 
-  const handleSignupSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!fullName || !phone || !email || !signupPassword) return;
-
-    // Generate new immutable sequential student ID
-    const randomSeq = Math.floor(100 + Math.random() * 900);
-    const newStudentId = formatStudentId(randomSeq, 2026);
-
-    const newUserProfile: UserProfile = {
-      uid: `user_${Date.now()}`,
-      studentId: newStudentId,
-      fullName,
-      email,
-      phone,
-      address: {
-        local: 'Town Center',
-        district,
+  const buildGoogleContext = (): GoogleSignupContext => {
+    if (mode === 'signup') {
+      return {
+        fullName: fullName.trim() || undefined,
+        phone: phone.trim() || undefined,
         state,
-        country: 'India',
-      },
-      examTarget,
-      language: 'en',
-      profileComplete: true,
-      role: 'student',
-      createdAt: new Date().toISOString(),
-      dpdpConsent,
-      subscription: {
-        isActive: true,
-        plan: 'Pro Daily Pass',
-        validUntil: '2026-12-31T23:59:59Z',
-        consecutiveMissedDays: 0,
-      },
+        district,
+        examTarget,
+        referralCode: referralCode || undefined,
+        skillTier: pendingDiagnostic?.assignedTier,
+      };
+    }
+    return {
+      referralCode: referralCode || undefined,
+      skillTier: pendingDiagnostic?.assignedTier,
     };
-
-    const newAccount: StoredAccount = {
-      id: newStudentId,
-      email,
-      password: signupPassword,
-      role: 'student',
-      userProfile: newUserProfile,
-    };
-
-    saveStoredAccount(newAccount);
-
-    setSignupSuccessNote(`Account created! Student ID: ${newStudentId}`);
-    setTimeout(() => {
-      onLoginSuccess(newUserProfile);
-      onClose();
-    }, 1200);
   };
 
+  const completeGoogleAuthResult = (res: FirebaseAuthResult) => {
+    if (!res.success || !res.user) {
+      setGoogleError(res.error || 'Google authentication was cancelled or failed.');
+      setGoogleErrorMeta({
+        canRetryRedirect: res.canRetryRedirect,
+        shouldSuggestNewTab: res.shouldSuggestNewTab,
+        shouldShowConsoleHint: res.shouldShowConsoleHint,
+      });
+      if (res.shouldShowConsoleHint) {
+        setShowFirebaseGuide(true);
+      }
+      return;
+    }
 
+    const enrichedUser: UserProfile = {
+      ...res.user,
+      referredBy: referralCode || res.user.referredBy,
+      skillTier: pendingDiagnostic?.assignedTier || res.user.skillTier || 'Bronze',
+      referralCode: res.user.referralCode || res.user.studentId,
+    };
+
+    const statusMsg = res.isNewUser
+      ? `Google account registered! Assigned Student ID: ${enrichedUser.studentId}. Opening dashboard...`
+      : `Signed in via Google (${enrichedUser.studentId})! Opening dashboard...`;
+
+    setGoogleSuccessNote(statusMsg);
+
+    if (signupCloseTimerRef.current !== null) {
+      window.clearTimeout(signupCloseTimerRef.current);
+    }
+
+    if (res.isNewUser || mode === 'signup') {
+      setInteractiveAuthHold(true);
+      signupCloseTimerRef.current = window.setTimeout(() => {
+        setInteractiveAuthHold(false);
+        onLoginSuccess(enrichedUser);
+        onClose();
+      }, 650);
+    } else {
+      onLoginSuccess(enrichedUser);
+      onClose();
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setIsGoogleLoading(true);
+    setGoogleError(null);
+    setGoogleErrorMeta(null);
+    setGoogleSuccessNote(null);
+    setLoginError(null);
+    setSignupError(null);
+
+    try {
+      const res = await signInWithFirebaseGoogle(buildGoogleContext());
+      setIsGoogleLoading(false);
+      completeGoogleAuthResult(res);
+    } catch (err: any) {
+      setIsGoogleLoading(false);
+      setGoogleError(err?.message || 'Google authentication failed.');
+    }
+  };
+
+  const handleGoogleRedirectRetry = async () => {
+    setIsGoogleLoading(true);
+    setGoogleError(null);
+    try {
+      const res = await signInWithFirebaseGoogleRedirect(buildGoogleContext());
+      if (!res.success) {
+        setIsGoogleLoading(false);
+        completeGoogleAuthResult(res);
+      }
+    } catch (err: any) {
+      setIsGoogleLoading(false);
+      setGoogleError(err?.message || 'Unable to launch redirect sign-in.');
+    }
+  };
+
+  const handleSignupSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSignupError(null);
+
+    const fName = fullName.trim();
+    const ph = phone.trim();
+    const em = email.trim().toLowerCase();
+    const pw = signupPassword.trim();
+
+    if (!fName || !ph || !em || !pw) {
+      setSignupError('Please fill in all required fields.');
+      return;
+    }
+
+    if (pw.length < 6) {
+      setSignupError('Password must be at least 6 characters.');
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      // 1. Attempt Firebase Signup + Firestore profile creation
+      const fbRes = await signUpWithFirebase(em, pw, {
+        fullName: fName,
+        phone: ph,
+        state,
+        district,
+        examTarget,
+      });
+
+      if (fbRes.success && fbRes.user) {
+        const enrichedUser: UserProfile = {
+          ...fbRes.user,
+          referredBy: referralCode || fbRes.user.referredBy,
+          skillTier: pendingDiagnostic?.assignedTier || fbRes.user.skillTier || 'Bronze',
+          referralCode: fbRes.user.studentId,
+        };
+
+        setIsLoading(false);
+        setSignupSuccessNote(
+          fbRes.requiresEmailVerification
+            ? `Account created! Student ID: ${enrichedUser.studentId}. Verification email sent — verify your email to sync leaderboard scores.`
+            : `Firebase Account created & synced to Firestore! Your unique Student ID is ${enrichedUser.studentId}.`
+        );
+
+        if (signupCloseTimerRef.current !== null) {
+          window.clearTimeout(signupCloseTimerRef.current);
+        }
+        signupCloseTimerRef.current = window.setTimeout(() => {
+          onLoginSuccess(enrichedUser);
+          onClose();
+        }, 1400);
+        return;
+      }
+
+      // If Email/Password provider is disabled in Firebase Console
+      if (fbRes.isProviderDisabled) {
+        setShowFirebaseGuide(true);
+        setIsLoading(false);
+        setSignupError(
+          'Email/Password auth is not enabled yet in Firebase Console. Please use "Continue with Google" above or enable Email/Password sign-in.'
+        );
+        return;
+      }
+
+      setIsLoading(false);
+      setSignupError(fbRes.error || 'Registration failed.');
+    } catch (err: any) {
+      setIsLoading(false);
+      setSignupError(err?.message || 'Registration error.');
+    }
+  };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-3 sm:p-4 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-150">
-      <div className="bg-white rounded-xl max-w-lg w-full p-5 sm:p-6 shadow-xl border border-slate-200 text-slate-900 relative my-auto">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="auth-modal-title"
+      className="fixed inset-0 bg-slate-900/70 z-50 flex items-center justify-center p-4 backdrop-blur-xs"
+    >
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 sm:p-7 shadow-2xl relative text-slate-900 dark:text-slate-100 animate-smooth-in max-h-[90vh] overflow-y-auto transition-colors">
         {/* Close Button */}
         <button
           type="button"
           onClick={onClose}
-          className="absolute top-4 right-4 p-1.5 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+          aria-label="Close authentication modal"
+          className="absolute right-4 top-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
         >
-          <X className="w-4 h-4" />
+          <X className="w-5 h-5" />
         </button>
 
         {/* Brand Header */}
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-9 h-9 rounded-lg bg-amber-500 flex items-center justify-center text-slate-950 font-bold text-base shadow-xs">
+        <div className="text-center space-y-1 mb-5">
+          <div className="w-10 h-10 rounded-xl bg-slate-900 dark:bg-emerald-600 text-white flex items-center justify-center font-black text-sm mx-auto shadow-xs">
             COC
           </div>
-          <div>
-            <h2 className="text-base font-bold tracking-tight text-slate-900 leading-tight">
-              {mode === 'login' ? 'Sign In' : 'Create Student Account'}
-            </h2>
-            <p className="text-xs text-slate-500">
-              {mode === 'login'
-                ? 'Sign in with your User ID / Email and password'
-                : 'Generates system-verified Student ID (COC-2026-XXXXXX)'}
-            </p>
+          <h3 id="auth-modal-title" className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+            {mode === 'login' ? 'Sign In to Your Account' : 'Create Student Account'}
+          </h3>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            {mode === 'login'
+              ? 'Enter your Student ID or Email to access the 7:00 PM examination'
+              : 'Register your unique Student ID to compete in All-India exams'}
+          </p>
+
+          {/* Account Storage Meta */}
+          <div className="inline-flex items-center gap-1.5 text-[11px] font-medium text-emerald-700 dark:text-emerald-400 mt-2">
+            <Database className="w-3.5 h-3.5 shrink-0" />
+            <span>Cloud-synced with Firestore</span>
           </div>
         </div>
 
-        {/* Tab Toggle */}
-        <div className="flex bg-slate-100 p-1 rounded-lg mb-4 text-xs font-semibold">
+        {(pendingDiagnostic || referralCode) && (
+          <div className="mb-4 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-xs text-emerald-900 dark:text-emerald-200 space-y-1">
+            {pendingDiagnostic && (
+              <div className="font-semibold">
+                Diagnostic Ready to Save: {pendingDiagnostic.score.toFixed(2)}/{pendingDiagnostic.maxScore} ({pendingDiagnostic.assignedTier} Tier)
+              </div>
+            )}
+            {referralCode && (
+              <div className="text-[11px]">
+                Friend Invite Applied ({referralCode}) — Challenger Badge + 1 Streak Freeze on activation.
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Mode Switcher */}
+        <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl mb-4 text-xs font-semibold border border-slate-200 dark:border-slate-700">
           <button
             type="button"
             onClick={() => {
               setMode('login');
               setLoginError(null);
+              setGoogleError(null);
+              setGoogleErrorMeta(null);
+              setGoogleSuccessNote(null);
+              setShowFirebaseGuide(false);
             }}
-            className={`flex-1 py-1.5 rounded-md transition-all ${
-              mode === 'login' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+            className={`flex-1 py-2 rounded-lg cursor-pointer ${
+              mode === 'login'
+                ? 'bg-white dark:bg-emerald-600 text-slate-900 dark:text-white shadow-xs font-bold'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             Sign In
@@ -178,210 +442,398 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             type="button"
             onClick={() => {
               setMode('signup');
-              setLoginError(null);
+              setSignupError(null);
+              setGoogleError(null);
+              setGoogleErrorMeta(null);
+              setGoogleSuccessNote(null);
+              setShowFirebaseGuide(false);
             }}
-            className={`flex-1 py-1.5 rounded-md transition-all ${
-              mode === 'signup' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+            className={`flex-1 py-2 rounded-lg cursor-pointer ${
+              mode === 'signup'
+                ? 'bg-white dark:bg-emerald-600 text-slate-900 dark:text-white shadow-xs font-bold'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
-            Register / Sign Up
+            New Student Registration
           </button>
         </div>
 
-        {/* LOGIN FORM */}
+        {/* Firebase Console Setup Guide if Email or Google Provider needs attention */}
+        {showFirebaseGuide && (
+          <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 rounded-xl text-xs text-amber-900 dark:text-amber-200 space-y-2">
+            <div className="font-bold flex items-center gap-1.5 text-amber-950 dark:text-amber-100">
+              <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+              <span>Firebase Authentication Provider &amp; Domain Setup:</span>
+            </div>
+            <ol className="list-decimal pl-4 space-y-1 text-[11px] leading-relaxed">
+              <li>Open Firebase Console Authentication -&gt; <strong>Sign-in method</strong> and verify <strong>Google</strong> (and Email/Password) are enabled.</li>
+              <li>
+                Under <strong>Settings -&gt; Authorized domains</strong>, ensure{' '}
+                <code className="px-1 py-0.5 rounded bg-amber-100 dark:bg-amber-900 font-mono text-[10px]">
+                  {typeof window !== 'undefined' ? window.location.hostname : 'localhost'}
+                </code>{' '}
+                is listed.
+              </li>
+            </ol>
+            <div className="flex flex-wrap gap-3 pt-0.5">
+              <a
+                href="https://console.firebase.google.com/project/dazzling-chimera-qcb1c/authentication/providers"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-900 dark:text-amber-300 underline hover:text-amber-950 dark:hover:text-amber-200"
+              >
+                <span>Sign-in Providers</span>
+                <ExternalLink className="w-3 h-3" />
+              </a>
+              <a
+                href="https://console.firebase.google.com/project/dazzling-chimera-qcb1c/authentication/settings"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-900 dark:text-amber-300 underline hover:text-amber-950 dark:hover:text-amber-200"
+              >
+                <span>Authorized Domains</span>
+                <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
+          </div>
+        )}
+
+        {/* 1-Click Google Authentication (Shared across Sign In & New Student Registration) */}
+        <div className="mb-4 space-y-2.5">
+          <button
+            type="button"
+            onClick={handleGoogleSignIn}
+            disabled={isLoading || isGoogleLoading}
+            aria-label={mode === 'login' ? 'Sign in with Google' : 'Sign up with Google'}
+            className="w-full py-2.5 px-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors flex items-center justify-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-200 cursor-pointer shadow-2xs disabled:opacity-50"
+          >
+            {isGoogleLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin text-emerald-600 dark:text-emerald-400" />
+                <span>Connecting to Google...</span>
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    fill="#4285F4"
+                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                  />
+                  <path
+                    fill="#34A853"
+                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                  />
+                  <path
+                    fill="#FBBC05"
+                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                  />
+                  <path
+                    fill="#EA4335"
+                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                  />
+                </svg>
+                <span>
+                  {mode === 'login'
+                    ? 'Sign in with Google'
+                    : 'Sign up with Google (Instant Student ID)'}
+                </span>
+              </>
+            )}
+          </button>
+
+          {googleSuccessNote && (
+            <div
+              role="status"
+              className="p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-xs text-emerald-800 dark:text-emerald-200 flex items-start gap-2"
+            >
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+              <span>{googleSuccessNote}</span>
+            </div>
+          )}
+
+          {googleError && (
+            <div
+              role="alert"
+              className="p-3 rounded-lg bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-xs text-rose-700 dark:text-rose-300 space-y-2"
+            >
+              <div className="flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+                <span>{googleError}</span>
+              </div>
+              {googleErrorMeta?.canRetryRedirect && (
+                <button
+                  type="button"
+                  onClick={handleGoogleRedirectRetry}
+                  disabled={isGoogleLoading}
+                  className="text-[11px] font-bold text-rose-800 dark:text-rose-200 underline hover:opacity-80 cursor-pointer"
+                >
+                  Retry via Full-Page Google Redirect
+                </button>
+              )}
+              {googleErrorMeta?.shouldSuggestNewTab && typeof window !== 'undefined' && (
+                <a
+                  href={window.location.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-800 dark:text-rose-200 underline hover:opacity-80"
+                >
+                  <span>Open App in New Tab for Google Sign-In</span>
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              )}
+            </div>
+          )}
+
+          <div className="flex items-center gap-2 my-3">
+            <div className="flex-1 border-t border-slate-200 dark:border-slate-800" />
+            <span className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 tracking-wider">
+              Or with email / ID
+            </span>
+            <div className="flex-1 border-t border-slate-200 dark:border-slate-800" />
+          </div>
+        </div>
+
+        {/* 1. LOGIN FORM */}
         {mode === 'login' && (
           <form onSubmit={handleLoginSubmit} className="space-y-3.5">
             {loginError && (
-              <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+              <div className="p-3 rounded-lg bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-xs text-rose-700 dark:text-rose-300 flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
                 <span>{loginError}</span>
               </div>
             )}
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                User ID or Email
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                Student ID / Registered Email
               </label>
               <div className="relative">
+                <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
                   required
+                  placeholder="e.g. COC-2026-123456 or name@gmail.com"
                   value={loginIdentifier}
                   onChange={(e) => setLoginIdentifier(e.target.value)}
-                  placeholder="e.g. admin@coc.in or COC-2026-000123"
-                  className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-amber-500 focus:bg-white"
+                  className="w-full pl-9 pr-3 py-2.5 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-slate-900 dark:focus:ring-emerald-500 focus:bg-white dark:focus:bg-slate-800"
                 />
-                <User className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                 Password
               </label>
               <div className="relative">
+                <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="password"
                   required
+                  placeholder="Enter your password"
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
-                  placeholder="Enter password"
-                  className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-amber-500 focus:bg-white"
+                  className="w-full pl-9 pr-3 py-2.5 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-slate-900 dark:focus:ring-emerald-500 focus:bg-white dark:focus:bg-slate-800"
                 />
-                <Lock className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
               </div>
             </div>
 
             <button
               type="submit"
-              className="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-2.5 rounded-lg text-xs transition-colors shadow-xs flex items-center justify-center gap-2"
+              disabled={isLoading}
+              className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 disabled:bg-slate-400 dark:disabled:bg-slate-700 text-white font-semibold rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs mt-2"
             >
-              <span>Sign In to Account</span>
-              <ArrowRight className="w-4 h-4" />
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>Connecting to Firebase...</span>
+                </>
+              ) : (
+                <>
+                  <span>Sign In to Dashboard</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </>
+              )}
             </button>
-
           </form>
         )}
 
-        {/* SIGNUP FORM */}
+        {/* 2. SIGNUP FORM */}
         {mode === 'signup' && (
           <form onSubmit={handleSignupSubmit} className="space-y-3">
+            {signupError && (
+              <div className="p-3 rounded-lg bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-xs text-rose-700 dark:text-rose-300 flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+                <span>{signupError}</span>
+              </div>
+            )}
+
             {signupSuccessNote && (
-              <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-semibold flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              <div className="p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-xs text-emerald-800 dark:text-emerald-200 flex items-start gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
                 <span>{signupSuccessNote}</span>
               </div>
             )}
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Full Name <span className="text-rose-500">*</span>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                Full Name (As on official ID)
               </label>
-              <input
-                type="text"
-                required
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                placeholder="e.g. Ananya Sharma"
-                className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-amber-500 focus:bg-white"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Email <span className="text-rose-500">*</span>
-                </label>
+              <div className="relative">
+                <User className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
-                  type="email"
+                  type="text"
                   required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="name@email.com"
-                  className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-amber-500 focus:bg-white"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Phone (OTP) <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="tel"
-                  required
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+91 98765 43210"
-                  className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-amber-500 focus:bg-white"
+                  placeholder="e.g. Rahul Sharma"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-slate-900 dark:focus:ring-emerald-500 focus:bg-white dark:focus:bg-slate-800"
                 />
               </div>
             </div>
 
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Email Address
+                </label>
+                <div className="relative">
+                  <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="email"
+                    required
+                    placeholder="student@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-slate-900 dark:focus:ring-emerald-500 focus:bg-white dark:focus:bg-slate-800"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Mobile Number
+                </label>
+                <div className="relative">
+                  <Phone className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="tel"
+                    required
+                    placeholder="+91 98765 43210"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-slate-900 dark:focus:ring-emerald-500 focus:bg-white dark:focus:bg-slate-800"
+                  />
+                </div>
+              </div>
+            </div>
+
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Create Account Password <span className="text-rose-500">*</span>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                Password
               </label>
-              <input
-                type="password"
-                required
-                value={signupPassword}
-                onChange={(e) => setSignupPassword(e.target.value)}
-                placeholder="•••••••• (used for login post-deploy)"
-                className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-amber-500 focus:bg-white"
-              />
+              <div className="relative">
+                <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="password"
+                  required
+                  placeholder="Create a password (min 6 characters)"
+                  value={signupPassword}
+                  onChange={(e) => setSignupPassword(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-slate-900 dark:focus:ring-emerald-500 focus:bg-white dark:focus:bg-slate-800"
+                />
+              </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
+            {/* Comprehensive State & District Selection */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  State <span className="text-rose-500">*</span>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  State / Union Territory
                 </label>
-                <select
-                  value={state}
-                  onChange={(e) => handleStateChange(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-lg px-2 py-2 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-amber-500 focus:bg-white"
-                >
-                  {Object.keys(INDIAN_STATES_AND_DISTRICTS).map((st) => (
-                    <option key={st} value={st}>{st}</option>
-                  ))}
-                </select>
+                <div className="relative">
+                  <MapPin className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <select
+                    value={state}
+                    onChange={(e) => handleStateChange(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-slate-900 dark:focus:ring-emerald-500 focus:bg-white dark:focus:bg-slate-800 cursor-pointer"
+                  >
+                    {statesList.map((st) => (
+                      <option key={st} value={st} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
+                        {st}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  District <span className="text-rose-500">*</span>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  District
                 </label>
-                <select
-                  value={district}
-                  onChange={(e) => setDistrict(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-lg px-2 py-2 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-amber-500 focus:bg-white"
-                >
-                  {availableDistricts.map((d) => (
-                    <option key={d} value={d}>{d}</option>
-                  ))}
-                </select>
+                <div className="relative">
+                  <Building className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <select
+                    value={district}
+                    onChange={(e) => setDistrict(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-slate-900 dark:focus:ring-emerald-500 focus:bg-white dark:focus:bg-slate-800 cursor-pointer"
+                  >
+                    {availableDistricts.map((dist) => (
+                      <option key={dist} value={dist} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
+                        {dist}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Target Exam
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                Target Competitive Examination
               </label>
               <select
                 value={examTarget}
                 onChange={(e) => setExamTarget(e.target.value as ExamTarget)}
-                className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-amber-500 focus:bg-white"
+                className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-slate-900 dark:focus:ring-emerald-500 focus:bg-white dark:focus:bg-slate-800 cursor-pointer"
               >
-                <option value="SSC CGL / CHSL">SSC CGL / CHSL</option>
-                <option value="Banking (IBPS / SBI PO & Clerk)">Banking (IBPS / SBI PO & Clerk)</option>
-                <option value="Railways (RRB NTPC / Group D)">Railways (RRB NTPC / Group D)</option>
-                <option value="State PSC (APPSC / TSPSC / UPPSC)">State PSC (APPSC / TSPSC / UPPSC)</option>
-                <option value="UPSC Civil Services">UPSC Civil Services</option>
-                <option value="Police SI & Constable">Police SI & Constable</option>
+                <option value="SSC CGL / CHSL" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">SSC CGL / CHSL</option>
+                <option value="Banking (IBPS / SBI PO & Clerk)" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Banking (IBPS / SBI PO & Clerk)</option>
+                <option value="Railways (RRB NTPC / Group D)" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Railways (RRB NTPC / Group D)</option>
+                <option value="State PSC (APPSC / TSPSC / UPPSC)" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">State PSC (APPSC / TSPSC / UPPSC)</option>
+                <option value="UPSC Civil Services" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">UPSC Civil Services</option>
+                <option value="Police SI & Constable" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Police SI & Constable</option>
               </select>
             </div>
 
-            <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200">
-              <label className="flex items-start gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={dpdpConsent}
-                  onChange={(e) => setDpdpConsent(e.target.checked)}
-                  className="mt-0.5 w-3.5 h-3.5 text-amber-600 rounded"
-                />
-                <span className="text-[10px] text-slate-600 leading-tight">
-                  I consent to DPDP Act 2023 collection of location & phone solely for state ranking normalization.
-                </span>
+            <div className="flex items-start gap-2 pt-1">
+              <input
+                type="checkbox"
+                id="dpdp"
+                checked={dpdpConsent}
+                onChange={(e) => setDpdpConsent(e.target.checked)}
+                className="mt-0.5 rounded border-slate-300 dark:border-slate-600 text-slate-900 dark:text-emerald-500 focus:ring-0"
+              />
+              <label htmlFor="dpdp" className="text-[11px] text-slate-600 dark:text-slate-400 leading-tight">
+                I agree to DPDP 2023 compliance. My unique random Student ID will represent me on the All-India Leaderboard.
               </label>
             </div>
 
             <button
               type="submit"
-              disabled={!fullName || !phone || !email || !signupPassword || !dpdpConsent}
-              className="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-2.5 rounded-lg text-xs transition-colors shadow-xs flex items-center justify-center gap-2 disabled:bg-slate-300 disabled:cursor-not-allowed"
+              disabled={!dpdpConsent || isLoading}
+              className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 disabled:bg-slate-300 dark:disabled:bg-slate-700 text-white font-semibold rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs mt-2"
             >
-              <span>Generate Student ID & Enter</span>
-              <ArrowRight className="w-4 h-4" />
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>Registering with Firebase...</span>
+                </>
+              ) : (
+                <>
+                  <span>Register & Generate Random Student ID</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </>
+              )}
             </button>
           </form>
         )}

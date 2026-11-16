@@ -21,15 +21,15 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   const t = getTranslation(language);
 
   const items = [
-    { id: 'tests', label: t.navTests, icon: BookOpen },
-    { id: 'results', label: t.navResults, icon: Trophy },
-    { id: 'progress', label: t.navProgress, icon: TrendingUp },
-    { id: 'practice', label: t.navPractice, icon: Zap },
-    { id: 'profile', label: t.navProfile, icon: User },
+    { id: 'tests', label: language === 'en' ? 'Daily Test' : t.navTests, icon: BookOpen },
+    { id: 'results', label: language === 'en' ? 'Results' : t.navResults, icon: Trophy },
+    { id: 'progress', label: language === 'en' ? 'Progress' : t.navProgress, icon: TrendingUp },
+    { id: 'practice', label: language === 'en' ? 'Practice' : t.navPractice, icon: Zap },
+    { id: 'profile', label: language === 'en' ? 'Student ID' : t.navProfile, icon: User },
   ];
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-30 shadow-sm pb-[env(safe-area-inset-bottom)]">
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 z-30 shadow-sm pb-[env(safe-area-inset-bottom)] transition-colors">
       <div className="grid grid-cols-5 h-14">
         {items.map((item) => {
           const Icon = item.icon;
@@ -40,7 +40,9 @@ export const BottomNav: React.FC<BottomNavProps> = ({
               type="button"
               onClick={() => setActiveTab(item.id)}
               className={`flex flex-col items-center justify-center gap-1 transition-colors relative min-h-[48px] px-1 ${
-                isActive ? 'text-slate-900 font-semibold' : 'text-slate-500 hover:text-slate-800'
+                isActive
+                  ? 'text-slate-900 dark:text-white font-semibold'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
               }`}
             >
               <Icon className="w-4 h-4" />
@@ -48,7 +50,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
                 {item.label}
               </span>
               {isActive && (
-                <div className="absolute top-0 w-8 h-0.5 bg-slate-900 rounded-full" />
+                <div className="absolute top-0 w-8 h-0.5 bg-slate-900 dark:bg-emerald-400 rounded-full" />
               )}
             </button>
           );

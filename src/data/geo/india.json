@@ -1,0 +1,499 @@
+{
+  "version": "2026.1.0-LGD",
+  "lastUpdated": "2026-10-27",
+  "source": "Local Government Directory (LGD), Ministry of Panchayati Raj, Government of India",
+  "states": [
+    {
+      "code": "AP",
+      "name": "Andhra Pradesh",
+      "type": "state",
+      "districts": [
+        { "code": "AP-ALL", "name": "Alluri Sitharama Raju" },
+        { "code": "AP-ANA", "name": "Anakapalli" },
+        { "code": "AP-ANT", "name": "Ananthapuramu" },
+        { "code": "AP-ANN", "name": "Annamayya" },
+        { "code": "AP-BPT", "name": "Bapatla" },
+        { "code": "AP-CHT", "name": "Chittoor" },
+        { "code": "AP-EG",  "name": "East Godavari" },
+        { "code": "AP-ELR", "name": "Eluru" },
+        { "code": "AP-GNT", "name": "Guntur" },
+        { "code": "AP-KKD", "name": "Kakinada" },
+        { "code": "AP-KNA", "name": "Konaseema" },
+        { "code": "AP-KRI", "name": "Krishna" },
+        { "code": "AP-KRN", "name": "Kurnool" },
+        { "code": "AP-NND", "name": "Nandyal" },
+        { "code": "AP-NTR", "name": "NTR" },
+        { "code": "AP-PAL", "name": "Palnadu" },
+        { "code": "AP-PAR", "name": "Parvathipuram Manyam" },
+        { "code": "AP-PRA", "name": "Prakasam" },
+        { "code": "AP-SPL", "name": "Sri Potti Sriramulu Nellore" },
+        { "code": "AP-SSS", "name": "Sri Sathya Sai" },
+        { "code": "AP-SRI", "name": "Srikakulam" },
+        { "code": "AP-TPG", "name": "Tirupati" },
+        { "code": "AP-VIS", "name": "Visakhapatnam" },
+        { "code": "AP-VZM", "name": "Vizianagaram" },
+        { "code": "AP-WG",  "name": "West Godavari" },
+        { "code": "AP-YSR", "name": "YSR Kadapa" }
+      ]
+    },
+    {
+      "code": "TS",
+      "name": "Telangana",
+      "type": "state",
+      "districts": [
+        { "code": "TS-ADL", "name": "Adilabad" },
+        { "code": "TS-BHR", "name": "Bhadradri Kothagudem" },
+        { "code": "TS-HAN", "name": "Hanamkonda" },
+        { "code": "TS-HYD", "name": "Hyderabad" },
+        { "code": "TS-JGT", "name": "Jagtial" },
+        { "code": "TS-JGN", "name": "Jangaon" },
+        { "code": "TS-JYS", "name": "Jayashankar Bhupalpally" },
+        { "code": "TS-JGD", "name": "Jogulamba Gadwal" },
+        { "code": "TS-KMR", "name": "Kamareddy" },
+        { "code": "TS-KRN", "name": "Karimnagar" },
+        { "code": "TS-KHM", "name": "Khammam" },
+        { "code": "TS-KMS", "name": "Kumuram Bheem Asifabad" },
+        { "code": "TS-MHB", "name": "Mahabubabad" },
+        { "code": "TS-MBN", "name": "Mahabubnagar" },
+        { "code": "TS-MCH", "name": "Mancherial" },
+        { "code": "TS-MDK", "name": "Medak" },
+        { "code": "TS-MDC", "name": "Medchal Malkajgiri" },
+        { "code": "TS-MLG", "name": "Mulugu" },
+        { "code": "TS-NGR", "name": "Nagarkurnool" },
+        { "code": "TS-NLG", "name": "Nalgonda" },
+        { "code": "TS-NRP", "name": "Narayanpet" },
+        { "code": "TS-NRM", "name": "Nirmal" },
+        { "code": "TS-NZB", "name": "Nizamabad" },
+        { "code": "TS-PDB", "name": "Peddapalli" },
+        { "code": "TS-RCL", "name": "Rajanna Sircilla" },
+        { "code": "TS-RRD", "name": "Ranga Reddy" },
+        { "code": "TS-SGD", "name": "Sangareddy" },
+        { "code": "TS-SDP", "name": "Siddipet" },
+        { "code": "TS-SYP", "name": "Suryapet" },
+        { "code": "TS-VKB", "name": "Vikarabad" },
+        { "code": "TS-WNW", "name": "Wanaparthy" },
+        { "code": "TS-WRU", "name": "Warangal" },
+        { "code": "TS-YBD", "name": "Yadadri Bhuvanagiri" }
+      ]
+    },
+    {
+      "code": "UP",
+      "name": "Uttar Pradesh",
+      "type": "state",
+      "districts": [
+        { "code": "UP-AGR", "name": "Agra" },
+        { "code": "UP-ALH", "name": "Aligarh" },
+        { "code": "UP-PRY", "name": "Prayagraj (Allahabad)" },
+        { "code": "UP-AYD", "name": "Ayodhya (Faizabad)" },
+        { "code": "UP-BRL", "name": "Bareilly" },
+        { "code": "UP-GZB", "name": "Ghaziabad" },
+        { "code": "UP-GBN", "name": "Gautam Buddha Nagar (Noida)" },
+        { "code": "UP-GKP", "name": "Gorakhpur" },
+        { "code": "UP-JHN", "name": "Jhansi" },
+        { "code": "UP-KNP", "name": "Kanpur Nagar" },
+        { "code": "UP-LKO", "name": "Lucknow" },
+        { "code": "UP-MAT", "name": "Mathura" },
+        { "code": "UP-MRT", "name": "Meerut" },
+        { "code": "UP-MRZ", "name": "Mirzapur" },
+        { "code": "UP-MBD", "name": "Moradabad" },
+        { "code": "UP-VNS", "name": "Varanasi" }
+      ]
+    },
+    {
+      "code": "BR",
+      "name": "Bihar",
+      "type": "state",
+      "districts": [
+        { "code": "BR-PAT", "name": "Patna" },
+        { "code": "BR-GAY", "name": "Gaya" },
+        { "code": "BR-BHP", "name": "Bhagalpur" },
+        { "code": "BR-MZP", "name": "Muzaffarpur" },
+        { "code": "BR-PUR", "name": "Purnia" },
+        { "code": "BR-DAR", "name": "Darbhanga" },
+        { "code": "BR-ARA", "name": "Bhojpur (Ara)" },
+        { "code": "BR-NAL", "name": "Nalanda (Bihar Sharif)" },
+        { "code": "BR-ROH", "name": "Rohtas" },
+        { "code": "BR-SAR", "name": "Saran (Chhapra)" }
+      ]
+    },
+    {
+      "code": "DL",
+      "name": "Delhi (NCT)",
+      "type": "union_territory",
+      "districts": [
+        { "code": "DL-CD", "name": "Central Delhi" },
+        { "code": "DL-ED", "name": "East Delhi" },
+        { "code": "DL-ND", "name": "New Delhi" },
+        { "code": "DL-NO", "name": "North Delhi" },
+        { "code": "DL-NE", "name": "North East Delhi" },
+        { "code": "DL-NW", "name": "North West Delhi" },
+        { "code": "DL-SD", "name": "South Delhi" },
+        { "code": "DL-SE", "name": "South East Delhi" },
+        { "code": "DL-SW", "name": "South West Delhi" },
+        { "code": "DL-WD", "name": "West Delhi" },
+        { "code": "DL-SH", "name": "Shahdara" }
+      ]
+    },
+    {
+      "code": "MH",
+      "name": "Maharashtra",
+      "type": "state",
+      "districts": [
+        { "code": "MH-MUM", "name": "Mumbai City" },
+        { "code": "MH-SUB", "name": "Mumbai Suburban" },
+        { "code": "MH-PUN", "name": "Pune" },
+        { "code": "MH-NAG", "name": "Nagpur" },
+        { "code": "MH-THN", "name": "Thane" },
+        { "code": "MH-NSK", "name": "Nashik" },
+        { "code": "MH-CSN", "name": "Chhatrapati Sambhajinagar" },
+        { "code": "MH-SOL", "name": "Solapur" },
+        { "code": "MH-KOL", "name": "Kolhapur" },
+        { "code": "MH-AMR", "name": "Amravati" }
+      ]
+    },
+    {
+      "code": "KA",
+      "name": "Karnataka",
+      "type": "state",
+      "districts": [
+        { "code": "KA-BLU", "name": "Bengaluru Urban" },
+        { "code": "KA-BLR", "name": "Bengaluru Rural" },
+        { "code": "KA-MYS", "name": "Mysuru" },
+        { "code": "KA-MNG", "name": "Dakshina Kannada (Mangaluru)" },
+        { "code": "KA-BLG", "name": "Belagavi" },
+        { "code": "KA-KLB", "name": "Kalaburagi" },
+        { "code": "KA-HUB", "name": "Dharwad (Hubballi)" },
+        { "code": "KA-SHI", "name": "Shivamogga" },
+        { "code": "KA-UDU", "name": "Udupi" },
+        { "code": "KA-BLI", "name": "Ballari" }
+      ]
+    },
+    {
+      "code": "TN",
+      "name": "Tamil Nadu",
+      "type": "state",
+      "districts": [
+        { "code": "TN-CHE", "name": "Chennai" },
+        { "code": "TN-COI", "name": "Coimbatore" },
+        { "code": "TN-MAD", "name": "Madurai" },
+        { "code": "TN-TRZ", "name": "Tiruchirappalli" },
+        { "code": "TN-SLM", "name": "Salem" },
+        { "code": "TN-TIR", "name": "Tirunelveli" },
+        { "code": "TN-VEL", "name": "Vellore" },
+        { "code": "TN-KAN", "name": "Kanchipuram" },
+        { "code": "TN-CBE", "name": "Tiruppur" },
+        { "code": "TN-KNY", "name": "Kanyakumari" }
+      ]
+    },
+    {
+      "code": "RJ",
+      "name": "Rajasthan",
+      "type": "state",
+      "districts": [
+        { "code": "RJ-JAI", "name": "Jaipur" },
+        { "code": "RJ-JOD", "name": "Jodhpur" },
+        { "code": "RJ-KOT", "name": "Kota" },
+        { "code": "RJ-BIK", "name": "Bikaner" },
+        { "code": "RJ-AJM", "name": "Ajmer" },
+        { "code": "RJ-UDA", "name": "Udaipur" },
+        { "code": "RJ-BHL", "name": "Bhilwara" },
+        { "code": "RJ-ALW", "name": "Alwar" },
+        { "code": "RJ-SIK", "name": "Sikar" }
+      ]
+    },
+    {
+      "code": "WB",
+      "name": "West Bengal",
+      "type": "state",
+      "districts": [
+        { "code": "WB-KOL", "name": "Kolkata" },
+        { "code": "WB-HWR", "name": "Howrah" },
+        { "code": "WB-N24", "name": "North 24 Parganas" },
+        { "code": "WB-S24", "name": "South 24 Parganas" },
+        { "code": "WB-DAR", "name": "Darjeeling" },
+        { "code": "WB-PAS", "name": "Paschim Bardhaman (Asansol)" },
+        { "code": "WB-PUR", "name": "Purba Medinipur" }
+      ]
+    },
+    {
+      "code": "MP",
+      "name": "Madhya Pradesh",
+      "type": "state",
+      "districts": [
+        { "code": "MP-BHO", "name": "Bhopal" },
+        { "code": "MP-IND", "name": "Indore" },
+        { "code": "MP-GWL", "name": "Gwalior" },
+        { "code": "MP-JAB", "name": "Jabalpur" },
+        { "code": "MP-UJJ", "name": "Ujjain" },
+        { "code": "MP-SAG", "name": "Sagar" }
+      ]
+    },
+    {
+      "code": "GJ",
+      "name": "Gujarat",
+      "type": "state",
+      "districts": [
+        { "code": "GJ-AHM", "name": "Ahmedabad" },
+        { "code": "GJ-SUR", "name": "Surat" },
+        { "code": "GJ-VAD", "name": "Vadodara" },
+        { "code": "GJ-RAJ", "name": "Rajkot" },
+        { "code": "GJ-BHN", "name": "Bhavnagar" },
+        { "code": "GJ-JAM", "name": "Jamnagar" }
+      ]
+    },
+    {
+      "code": "KL",
+      "name": "Kerala",
+      "type": "state",
+      "districts": [
+        { "code": "KL-TVM", "name": "Thiruvananthapuram" },
+        { "code": "KL-EKM", "name": "Ernakulam (Kochi)" },
+        { "code": "KL-KOZ", "name": "Kozhikode" },
+        { "code": "KL-TSR", "name": "Thrissur" },
+        { "code": "KL-KOL", "name": "Kollam" },
+        { "code": "KL-MLP", "name": "Malappuram" },
+        { "code": "KL-PLK", "name": "Palakkad" },
+        { "code": "KL-KNR", "name": "Kannur" }
+      ]
+    },
+    {
+      "code": "PB",
+      "name": "Punjab",
+      "type": "state",
+      "districts": [
+        { "code": "PB-ASR", "name": "Amritsar" },
+        { "code": "PB-LDH", "name": "Ludhiana" },
+        { "code": "PB-JAL", "name": "Jalandhar" },
+        { "code": "PB-PAT", "name": "Patiala" },
+        { "code": "PB-BTH", "name": "Bathinda" },
+        { "code": "PB-SAS", "name": "SAS Nagar (Mohali)" }
+      ]
+    },
+    {
+      "code": "HR",
+      "name": "Haryana",
+      "type": "state",
+      "districts": [
+        { "code": "HR-GGM", "name": "Gurugram" },
+        { "code": "HR-FBD", "name": "Faridabad" },
+        { "code": "HR-PAN", "name": "Panipat" },
+        { "code": "HR-AMB", "name": "Ambala" },
+        { "code": "HR-HIS", "name": "Hisar" },
+        { "code": "HR-ROH", "name": "Rohtak" },
+        { "code": "HR-KAR", "name": "Karnal" },
+        { "code": "HR-PKL", "name": "Panchkula" }
+      ]
+    },
+    {
+      "code": "OD",
+      "name": "Odisha",
+      "type": "state",
+      "districts": [
+        { "code": "OD-KHO", "name": "Khurda (Bhubaneswar)" },
+        { "code": "OD-CUT", "name": "Cuttack" },
+        { "code": "OD-GAN", "name": "Ganjam (Berhampur)" },
+        { "code": "OD-SUN", "name": "Sundargarh (Rourkela)" },
+        { "code": "OD-SAM", "name": "Sambalpur" },
+        { "code": "OD-PUR", "name": "Puri" }
+      ]
+    },
+    {
+      "code": "JH",
+      "name": "Jharkhand",
+      "type": "state",
+      "districts": [
+        { "code": "JH-RAN", "name": "Ranchi" },
+        { "code": "JH-ESB", "name": "East Singhbhum (Jamshedpur)" },
+        { "code": "JH-DHN", "name": "Dhanbad" },
+        { "code": "JH-BOK", "name": "Bokaro" },
+        { "code": "JH-HAZ", "name": "Hazaribagh" }
+      ]
+    },
+    {
+      "code": "CG",
+      "name": "Chhattisgarh",
+      "type": "state",
+      "districts": [
+        { "code": "CG-RAI", "name": "Raipur" },
+        { "code": "CG-DUR", "name": "Durg (Bhilai)" },
+        { "code": "CG-BIL", "name": "Bilaspur" },
+        { "code": "CG-KOR", "name": "Korba" },
+        { "code": "CG-RAJ", "name": "Rajnandgaon" }
+      ]
+    },
+    {
+      "code": "AS",
+      "name": "Assam",
+      "type": "state",
+      "districts": [
+        { "code": "AS-KAM", "name": "Kamrup Metropolitan (Guwahati)" },
+        { "code": "AS-DIB", "name": "Dibrugarh" },
+        { "code": "AS-SIL", "name": "Cachar (Silchar)" },
+        { "code": "AS-JOR", "name": "Jorhat" },
+        { "code": "AS-TEZ", "name": "Sonitpur (Tezpur)" }
+      ]
+    },
+    {
+      "code": "UK",
+      "name": "Uttarakhand",
+      "type": "state",
+      "districts": [
+        { "code": "UK-DEH", "name": "Dehradun" },
+        { "code": "UK-HAR", "name": "Haridwar" },
+        { "code": "UK-NAI", "name": "Nainital" },
+        { "code": "UK-USN", "name": "Udham Singh Nagar" }
+      ]
+    },
+    {
+      "code": "HP",
+      "name": "Himachal Pradesh",
+      "type": "state",
+      "districts": [
+        { "code": "HP-SHI", "name": "Shimla" },
+        { "code": "HP-KAN", "name": "Kangra (Dharamshala)" },
+        { "code": "HP-MAN", "name": "Mandi" },
+        { "code": "HP-SOL", "name": "Solan" },
+        { "code": "HP-KUL", "name": "Kullu" }
+      ]
+    },
+    {
+      "code": "JK",
+      "name": "Jammu and Kashmir",
+      "type": "union_territory",
+      "districts": [
+        { "code": "JK-SRI", "name": "Srinagar" },
+        { "code": "JK-JAM", "name": "Jammu" },
+        { "code": "JK-ANA", "name": "Anantnag" },
+        { "code": "JK-BAR", "name": "Baramulla" },
+        { "code": "JK-UDH", "name": "Udhampur" }
+      ]
+    },
+    {
+      "code": "GA",
+      "name": "Goa",
+      "type": "state",
+      "districts": [
+        { "code": "GA-NG", "name": "North Goa (Panaji)" },
+        { "code": "GA-SG", "name": "South Goa (Margao)" }
+      ]
+    },
+    {
+      "code": "TR",
+      "name": "Tripura",
+      "type": "state",
+      "districts": [
+        { "code": "TR-WTR", "name": "West Tripura (Agartala)" },
+        { "code": "TR-STR", "name": "South Tripura" },
+        { "code": "TR-GOM", "name": "Gomati" }
+      ]
+    },
+    {
+      "code": "ML",
+      "name": "Meghalaya",
+      "type": "state",
+      "districts": [
+        { "code": "ML-EKH", "name": "East Khasi Hills (Shillong)" },
+        { "code": "ML-WGA", "name": "West Garo Hills (Tura)" }
+      ]
+    },
+    {
+      "code": "MN",
+      "name": "Manipur",
+      "type": "state",
+      "districts": [
+        { "code": "MN-IWE", "name": "Imphal West" },
+        { "code": "MN-IEA", "name": "Imphal East" },
+        { "code": "MN-CCPUR", "name": "Churachandpur" }
+      ]
+    },
+    {
+      "code": "NL",
+      "name": "Nagaland",
+      "type": "state",
+      "districts": [
+        { "code": "NL-KOH", "name": "Kohima" },
+        { "code": "NL-DIM", "name": "Dimapur" }
+      ]
+    },
+    {
+      "code": "MZ",
+      "name": "Mizoram",
+      "type": "state",
+      "districts": [
+        { "code": "MZ-AIZ", "name": "Aizawl" },
+        { "code": "MZ-LUN", "name": "Lunglei" }
+      ]
+    },
+    {
+      "code": "AR",
+      "name": "Arunachal Pradesh",
+      "type": "state",
+      "districts": [
+        { "code": "AR-PAP", "name": "Papum Pare (Itanagar)" },
+        { "code": "AR-CHA", "name": "Changlang" }
+      ]
+    },
+    {
+      "code": "SK",
+      "name": "Sikkim",
+      "type": "state",
+      "districts": [
+        { "code": "SK-GAN", "name": "Gangtok (East Sikkim)" },
+        { "code": "SK-NAM", "name": "Namchi (South Sikkim)" }
+      ]
+    },
+    {
+      "code": "CH",
+      "name": "Chandigarh",
+      "type": "union_territory",
+      "districts": [
+        { "code": "CH-CH", "name": "Chandigarh" }
+      ]
+    },
+    {
+      "code": "PY",
+      "name": "Puducherry",
+      "type": "union_territory",
+      "districts": [
+        { "code": "PY-PD", "name": "Puducherry" },
+        { "code": "PY-KR", "name": "Karaikal" }
+      ]
+    },
+    {
+      "code": "LA",
+      "name": "Ladakh",
+      "type": "union_territory",
+      "districts": [
+        { "code": "LA-LEH", "name": "Leh" },
+        { "code": "LA-KAR", "name": "Kargil" }
+      ]
+    },
+    {
+      "code": "AN",
+      "name": "Andaman and Nicobar Islands",
+      "type": "union_territory",
+      "districts": [
+        { "code": "AN-SA", "name": "South Andaman (Port Blair)" },
+        { "code": "AN-NMA", "name": "North and Middle Andaman" }
+      ]
+    },
+    {
+      "code": "DH",
+      "name": "Dadra and Nagar Haveli and Daman and Diu",
+      "type": "union_territory",
+      "districts": [
+        { "code": "DH-DNH", "name": "Dadra and Nagar Haveli (Silvassa)" },
+        { "code": "DH-DAM", "name": "Daman" },
+        { "code": "DH-DIU", "name": "Diu" }
+      ]
+    },
+    {
+      "code": "LD",
+      "name": "Lakshadweep",
+      "type": "union_territory",
+      "districts": [
+        { "code": "LD-KAV", "name": "Kavaratti" }
+      ]
+    }
+  ]
+}
